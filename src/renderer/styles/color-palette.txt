@@ -1,0 +1,8 @@
+
+#fe9aaa	#fea741	#d19d3a	#f7f58c	#c1fc40	#2dfe50	#34feaf	#65ffea	#90c7fc	#5c86e1	#97abfb	#d975e2	#e55ca2	#ffffff
+#fe3e40	#f76f23	#9f7752	#fff054	#8dff79	#42c52e	#11c2b2	#28e9fd	#1aa6eb	#5c86e1	#8e74e2	#ba81c7	#fe41d1	#d9d9d9
+#e26f64	#fea67e	#d6b27f	#eeffb7	#d6e6a6	#bfd383	#a4c99a	#d9fde5	#d2f3f9	#c2c9e6	#d3c4e5	#b5a1e4	#eae3e7	#b3b3b3
+#cb9b96	#bb8862	#9f8a75	#c3be78	#a9c12f	#84b45d	#93c7c0	#a5bbc9	#8facc5	#8d9ccd	#ae9fbb	#c6a9c4	#bf7a9c	#838383
+#b53637	#ae5437	#775345	#dec633	#899b31	#57a53f	#139f91	#256686	#1a3096	#3155a4	#6751ae	#a752af	#ce3571	#3f3f3f
+
+#2a2a2a
