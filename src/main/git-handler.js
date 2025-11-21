@@ -120,44 +120,36 @@ async function checkWorkingDirectoryStatus(folderPath) {
 }
 
 /**
- * Restore project to a specific commit
+ * Restore project to a specific commit (leaves files uncommitted in working directory)
  * @param {string} folderPath - Path to the git repository
  * @param {string} commitHash - Hash of commit to restore to
- * @param {boolean} autoCommit - Whether to automatically commit after restore
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-async function restoreCommit(folderPath, commitHash, autoCommit = true) {
+async function restoreCommit(folderPath, commitHash) {
   try {
-    // Check for uncommitted changes
-    const status = await checkWorkingDirectoryStatus(folderPath);
-
-    if (status.hasChanges) {
-      return {
-        success: false,
-        error: 'You have uncommitted changes. Please commit or discard them first.',
-        uncommittedFiles: status.files
-      };
-    }
-
-    // Restore files from the target commit
+    // Restore files from the target commit (doesn't create a commit)
     await execPromise(`git checkout ${commitHash} -- .`, { cwd: folderPath });
-    console.log(`Restored files from commit ${commitHash}`);
-
-    if (autoCommit) {
-      // Create a new commit with the restored state
-      const shortHash = commitHash.substring(0, 7);
-      const commitMessage = `Restored to version ${shortHash}`;
-
-      const commitResult = await createCommit(folderPath, commitMessage);
-
-      if (!commitResult.success) {
-        return { success: false, error: `Restored files but failed to commit: ${commitResult.error}` };
-      }
-    }
+    console.log(`Restored files from commit ${commitHash} (uncommitted)`);
 
     return { success: true };
   } catch (error) {
     console.error('Error restoring commit:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Discard uncommitted changes in working directory
+ * @param {string} folderPath - Path to the git repository
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function discardChanges(folderPath) {
+  try {
+    await execPromise('git checkout -- .', { cwd: folderPath });
+    console.log('Discarded uncommitted changes');
+    return { success: true };
+  } catch (error) {
+    console.error('Error discarding changes:', error);
     return { success: false, error: error.message };
   }
 }
@@ -201,4 +193,4 @@ async function getCommitHistory(folderPath, limit = 50) {
   }
 }
 
-module.exports = { initializeGitRepository, createCommit, getCommitHistory, restoreCommit, checkWorkingDirectoryStatus };
+module.exports = { initializeGitRepository, createCommit, getCommitHistory, restoreCommit, checkWorkingDirectoryStatus, discardChanges };
