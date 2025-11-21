@@ -36,42 +36,59 @@ async function createCommit(folderPath, message) {
  */
 async function initializeGitRepository(folderPath) {
   try {
-    // Call git init command
-    await execPromise('git init', { cwd: folderPath });
-    console.log('Git repository initialized');
+    // Check if git repository already exists
+    const gitDirPath = path.join(folderPath, '.git');
+    let alreadyInitialized = false;
 
-    // Create .gitignore
-    const gitignoreContent = await fs.readFile(path.join(__dirname, 'text/gitignore.txt'));
-    const gitignorePath = path.join(folderPath, '.gitignore');
-    await fs.writeFile(gitignorePath, gitignoreContent);
-    console.log('.gitignore created');
-
-    // Create .gitattributes
-    const gitattributesContent = await fs.readFile(path.join(__dirname, 'text/gitattributes.txt'));
-    const gitattributesPath = path.join(folderPath, '.gitattributes');
-    await fs.writeFile(gitattributesPath, gitattributesContent);
-    console.log('.gitattributes created');
-
-    // Append to .git/config
-    const gitConfigContent = await fs.readFile(path.join(__dirname, 'text/gitconfig.txt'));
-    const gitConfigPath = path.join(folderPath, '.git/config');
-    await fs.appendFile(gitConfigPath, gitConfigContent);
-    console.log('.git/config updated with zcat filter configuration');
-
-    // Create initial commit
-    const commitResult = await createCommit(folderPath, 'Initial commit');
-
-    if (!commitResult.success) {
-      dialog.showErrorBox('Commit Error', `Repository initialized but failed to create initial commit: ${commitResult.error}`);
-      return { success: false, error: commitResult.error };
+    try {
+      const stats = await fs.stat(gitDirPath);
+      if (stats.isDirectory()) {
+        alreadyInitialized = true;
+        console.log('Git repository already exists, skipping initialization');
+      }
+    } catch (error) {
+      // .git directory doesn't exist, proceed with initialization
+      alreadyInitialized = false;
     }
 
-    dialog.showMessageBox({
-      type: 'info',
-      title: 'Repository Initialized',
-      message: 'Git repository successfully initialized!',
-      detail: 'Created .gitignore, .gitattributes, configured git filters, and created initial commit.'
-    });
+    // Only run git init if not already initialized
+    if (!alreadyInitialized) {
+      await execPromise('git init', { cwd: folderPath });
+      console.log('Git repository initialized');
+      // Create .gitignore
+      const gitignoreContent = await fs.readFile(path.join(__dirname, 'text/gitignore.txt'));
+      const gitignorePath = path.join(folderPath, '.gitignore');
+      await fs.writeFile(gitignorePath, gitignoreContent);
+      console.log('.gitignore created');
+  
+      // Create .gitattributes
+      const gitattributesContent = await fs.readFile(path.join(__dirname, 'text/gitattributes.txt'));
+      const gitattributesPath = path.join(folderPath, '.gitattributes');
+      await fs.writeFile(gitattributesPath, gitattributesContent);
+      console.log('.gitattributes created');
+  
+      // Append to .git/config
+      const gitConfigContent = await fs.readFile(path.join(__dirname, 'text/gitconfig.txt'));
+      const gitConfigPath = path.join(folderPath, '.git/config');
+      await fs.appendFile(gitConfigPath, gitConfigContent);
+      console.log('.git/config updated with zcat filter configuration');
+  
+      // Create initial commit
+      const commitResult = await createCommit(folderPath, 'Initial commit');
+  
+      if (!commitResult.success) {
+        dialog.showErrorBox('Commit Error', `Repository initialized but failed to create initial commit: ${commitResult.error}`);
+        return { success: false, error: commitResult.error };
+      }
+  
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Repository Initialized',
+        message: 'Git repository successfully initialized!',
+        detail: 'Created .gitignore, .gitattributes, configured git filters, and created initial commit.'
+      });
+    }
+
 
     return { success: true };
   } catch (error) {

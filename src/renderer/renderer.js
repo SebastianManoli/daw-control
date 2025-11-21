@@ -13,6 +13,14 @@ document.getElementById('selectFolderBtn').addEventListener('click', async () =>
 });
 
 // Create Version button handler (placeholder for future functionality)
-document.getElementById('createVersionBtn').addEventListener('click', () => {
-  console.log('Create Version clicked');
+document.getElementById('createVersionBtn').addEventListener('click', async () => {
+  const result = await ipcRenderer.invoke('create-version');
+
+  if (result && result.success) {
+    console.log('Commit Created');
+    // TODO: Render Commit in app
+  } else if (result && !result.success) {
+    console.log('Error:', result.error);
+  }
+  
 });
