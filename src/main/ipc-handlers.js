@@ -1,7 +1,7 @@
 const { ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { initializeGitRepository, createCommit } = require('./git-handler');
+const { initializeGitRepository, createCommit, getCommitHistory } = require('./git-handler');
 
 // Store the current project path
 let currentProjectPath = null;
@@ -86,6 +86,15 @@ function registerIpcHandlers() {
     }
 
     return commitResult;
+  });
+
+  // Handle getting commit history
+  ipcMain.handle('get-commits', async () => {
+    if (!currentProjectPath) {
+      return { success: false, error: 'No project opened', commits: [] };
+    }
+
+    return await getCommitHistory(currentProjectPath);
   });
 }
 

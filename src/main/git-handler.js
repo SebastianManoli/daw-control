@@ -98,4 +98,43 @@ async function initializeGitRepository(folderPath) {
   }
 }
 
-module.exports = { initializeGitRepository, createCommit };
+/**
+ * Get commit history for a repository
+ * @param {string} folderPath - Path to the git repository
+ * @param {number} limit - Maximum number of commits to retrieve (default: 50)
+ * @returns {Promise<{success: boolean, commits?: Array, error?: string}>}
+ */
+async function getCommitHistory(folderPath, limit = 50) {
+  try {
+    // Get git log with formatted output
+    const { stdout } = await execPromise(
+      `git log --pretty=format:"%H|%an|%ae|%ad|%s" --date=iso -n ${limit}`,
+      { cwd: folderPath }
+    );
+
+    if (!stdout) {
+      // No commits yet
+      return { success: true, commits: [] };
+    }
+
+    // Parse the output into commit objects
+    const commits = stdout.split('\n').map(line => {
+      const [hash, author, email, date, message] = line.split('|');
+      return {
+        hash: hash,
+        shortHash: hash.substring(0, 7),
+        author: author,
+        email: email,
+        date: new Date(date),
+        message: message
+      };
+    });
+
+    return { success: true, commits };
+  } catch (error) {
+    console.error('Error getting commit history:', error);
+    return { success: false, error: error.message, commits: [] };
+  }
+}
+
+module.exports = { initializeGitRepository, createCommit, getCommitHistory };

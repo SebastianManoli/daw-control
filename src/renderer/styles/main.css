@@ -37,3 +37,64 @@ input {
 input::placeholder {
   color: white;
 }
+
+#commits-container {
+  margin-top: 30px;
+  width: 80%;
+  max-width: 800px;
+}
+
+h2 {
+  color: white;
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+#commits-list {
+  max-height: 400px;
+  overflow-y: auto;
+  background-color: #1f1f1f;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.commit-item {
+  background-color: #3f3f3f;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  border-left: 3px solid #57a53f;
+}
+
+.commit-message {
+  color: white;
+  font-size: 1rem;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.commit-meta {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.commit-hash {
+  color: #57a53f;
+  font-family: monospace;
+  margin-right: 10px;
+}
+
+.commit-author {
+  margin-right: 10px;
+}
+
+.commit-date {
+  color: #777;
+}
+
+.no-commits {
+  color: #999;
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
