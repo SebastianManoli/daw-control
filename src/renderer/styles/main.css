@@ -1,0 +1,30 @@
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  font-family: "inter-variable", sans-serif;
+  font-variation-settings: "slnt" 0, "wght" 400;
+  background:#2a2a2a 100%;
+}
+
+h1 {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 30px;
+}
+
+button {
+  margin: 4px;
+  font-size: 1rem;
+  background-color: #3f3f3f;
+  color: white;
+  cursor: pointer;
+  border-style: none;
+}
+
+#core-buttons {
+  display: flex;
+}
