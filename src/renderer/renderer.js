@@ -1,6 +1,30 @@
 const { ipcRenderer } = require('electron');
 
 /**
+ * Handle restore button click
+ * @param {Event} event - Click event
+ */
+async function handleRestoreClick(event) {
+  const commitHash = event.target.dataset.commitHash;
+
+  if (!commitHash) {
+    console.error('No commit hash found');
+    return;
+  }
+
+  // Call IPC to restore commit
+  const result = await ipcRenderer.invoke('restore-commit', commitHash);
+
+  if (result && result.success) {
+    console.log('Restored to commit:', commitHash);
+    // Reload commits to show the new "Restored to..." commit
+    await loadCommits();
+  } else if (result && !result.success) {
+    console.log('Restore failed:', result.error);
+  }
+}
+
+/**
  * Fetch and display commits from the git repository
  */
 async function loadCommits() {
@@ -16,6 +40,10 @@ async function loadCommits() {
     result.commits.forEach(commit => {
       const commitItem = document.createElement('div');
       commitItem.className = 'commit-item';
+
+      // Commit content (message and metadata)
+      const commitContent = document.createElement('div');
+      commitContent.className = 'commit-content';
 
       const commitMessage = document.createElement('div');
       commitMessage.className = 'commit-message';
@@ -41,8 +69,23 @@ async function loadCommits() {
       commitMeta.appendChild(commitAuthor);
       commitMeta.appendChild(commitDate);
 
-      commitItem.appendChild(commitMessage);
-      commitItem.appendChild(commitMeta);
+      commitContent.appendChild(commitMessage);
+      commitContent.appendChild(commitMeta);
+
+      // Commit actions (restore button)
+      const commitActions = document.createElement('div');
+      commitActions.className = 'commit-actions';
+
+      const restoreBtn = document.createElement('button');
+      restoreBtn.className = 'restore-btn';
+      restoreBtn.textContent = 'Restore';
+      restoreBtn.dataset.commitHash = commit.hash;
+      restoreBtn.addEventListener('click', handleRestoreClick);
+
+      commitActions.appendChild(restoreBtn);
+
+      commitItem.appendChild(commitContent);
+      commitItem.appendChild(commitActions);
 
       commitsList.appendChild(commitItem);
     });

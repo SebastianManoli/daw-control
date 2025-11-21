@@ -99,6 +99,62 @@ async function initializeGitRepository(folderPath) {
 }
 
 /**
+ * Check if working directory has uncommitted changes
+ * @param {string} folderPath - Path to the git repository
+ * @returns {Promise<{hasChanges: boolean, files?: string[]}>}
+ */
+async function checkWorkingDirectoryStatus(folderPath) {
+  try {
+    const { stdout } = await execPromise('git status --porcelain', { cwd: folderPath });
+
+    if (stdout.trim()) {
+      const files = stdout.trim().split('\n').map(line => line.substring(3));
+      return { hasChanges: true, files };
+    }
+
+    return { hasChanges: false, files: [] };
+  } catch (error) {
+    console.error('Error checking working directory:', error);
+    return { hasChanges: false, files: [] };
+  }
+}
+
+/**
+ * Restore project to a specific commit (leaves files uncommitted in working directory)
+ * @param {string} folderPath - Path to the git repository
+ * @param {string} commitHash - Hash of commit to restore to
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function restoreCommit(folderPath, commitHash) {
+  try {
+    // Restore files from the target commit (doesn't create a commit)
+    await execPromise(`git checkout ${commitHash} -- .`, { cwd: folderPath });
+    console.log(`Restored files from commit ${commitHash} (uncommitted)`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error restoring commit:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Discard uncommitted changes in working directory
+ * @param {string} folderPath - Path to the git repository
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function discardChanges(folderPath) {
+  try {
+    await execPromise('git checkout -- .', { cwd: folderPath });
+    console.log('Discarded uncommitted changes');
+    return { success: true };
+  } catch (error) {
+    console.error('Error discarding changes:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Get commit history for a repository
  * @param {string} folderPath - Path to the git repository
  * @param {number} limit - Maximum number of commits to retrieve (default: 50)
@@ -137,4 +193,4 @@ async function getCommitHistory(folderPath, limit = 50) {
   }
 }
 
-module.exports = { initializeGitRepository, createCommit, getCommitHistory };
+module.exports = { initializeGitRepository, createCommit, getCommitHistory, restoreCommit, checkWorkingDirectoryStatus, discardChanges };
