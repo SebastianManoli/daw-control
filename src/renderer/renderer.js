@@ -116,7 +116,8 @@ document.getElementById('createVersionBtn').addEventListener('click', async () =
 
   // Validate that message is not empty
   if (!commitMessage) {
-    alert('Please enter a version description');
+    // Visual feedback instead of alert
+    commitMessageInput.placeholder = 'Please enter a message!';
     commitMessageInput.focus();
     return;
   }
