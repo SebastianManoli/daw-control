@@ -64,6 +64,36 @@ h2 {
   margin-bottom: 8px;
   border-radius: 4px;
   border-left: 3px solid #57a53f;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.commit-content {
+  flex: 1;
+}
+
+.commit-actions {
+  margin-left: 15px;
+}
+
+.restore-btn {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  background-color: #57a53f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.restore-btn:hover {
+  background-color: #6bc04a;
+}
+
+.restore-btn:active {
+  background-color: #4a8a35;
 }
 
 .commit-message {

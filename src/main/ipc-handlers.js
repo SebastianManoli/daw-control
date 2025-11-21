@@ -1,7 +1,7 @@
 const { ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { initializeGitRepository, createCommit, getCommitHistory } = require('./git-handler');
+const { initializeGitRepository, createCommit, getCommitHistory, restoreCommit } = require('./git-handler');
 
 // Store the current project path
 let currentProjectPath = null;
@@ -95,6 +95,46 @@ function registerIpcHandlers() {
     }
 
     return await getCommitHistory(currentProjectPath);
+  });
+
+  // Handle restoring to a specific commit
+  ipcMain.handle('restore-commit', async (event, commitHash) => {
+    if (!currentProjectPath) {
+      dialog.showErrorBox('No Project Open', 'Please open a project first.');
+      return { success: false, error: 'No project opened' };
+    }
+
+    // Show confirmation dialog
+    const result = await dialog.showMessageBox({
+      type: 'warning',
+      buttons: ['Cancel', 'Restore'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Restore Version',
+      message: 'Are you sure you want to restore to this version?',
+      detail: 'This will restore all project files to the selected version and create a new commit. Your current work must be committed first.'
+    });
+
+    if (result.response === 0) {
+      // User clicked Cancel
+      return { success: false, error: 'Cancelled by user' };
+    }
+
+    // Perform the restore
+    const restoreResult = await restoreCommit(currentProjectPath, commitHash);
+
+    if (restoreResult.success) {
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Version Restored',
+        message: 'Project restored successfully!',
+        detail: `Your project has been restored to version ${commitHash.substring(0, 7)} and a new commit has been created.`
+      });
+    } else {
+      dialog.showErrorBox('Restore Failed', `Failed to restore: ${restoreResult.error}`);
+    }
+
+    return restoreResult;
   });
 }
 
