@@ -7,8 +7,32 @@ const { dialog } = require('electron');
 const execPromise = util.promisify(exec);
 
 /**
+ * Create a git commit in the specified folder
+ * @param {string} folderPath - Path to the git repository
+ * @param {string} message - Commit message
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function createCommit(folderPath, message) {
+  try {
+    // Stage all changes
+    await execPromise('git add .', { cwd: folderPath });
+    console.log('Files staged for commit');
+
+    // Create commit
+    await execPromise(`git commit -m "${message}"`, { cwd: folderPath });
+    console.log(`Commit created: ${message}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating commit:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Initialize a git repository in the specified folder
- * Creates .gitignore, .gitattributes, and configures git filters
+ * Creates .gitignore, .gitattributes, configures git filters, and creates initial commit
+ * @param {string} folderPath
  */
 async function initializeGitRepository(folderPath) {
   try {
@@ -34,11 +58,19 @@ async function initializeGitRepository(folderPath) {
     await fs.appendFile(gitConfigPath, gitConfigContent);
     console.log('.git/config updated with zcat filter configuration');
 
+    // Create initial commit
+    const commitResult = await createCommit(folderPath, 'Initial commit');
+
+    if (!commitResult.success) {
+      dialog.showErrorBox('Commit Error', `Repository initialized but failed to create initial commit: ${commitResult.error}`);
+      return { success: false, error: commitResult.error };
+    }
+
     dialog.showMessageBox({
       type: 'info',
       title: 'Repository Initialized',
       message: 'Git repository successfully initialized!',
-      detail: 'Created .gitignore, .gitattributes, and configured git filters.'
+      detail: 'Created .gitignore, .gitattributes, configured git filters, and created initial commit.'
     });
 
     return { success: true };
@@ -49,4 +81,4 @@ async function initializeGitRepository(folderPath) {
   }
 }
 
-module.exports = { initializeGitRepository };
+module.exports = { initializeGitRepository, createCommit };
