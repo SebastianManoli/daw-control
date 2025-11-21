@@ -1,1 +1,3 @@
 Backup/*
+*.ini
+Ableton Project Info/*
