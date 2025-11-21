@@ -1,6 +1,10 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const { exec } = require('child_process');
+const util = require('util');
+
+const execPromise = util.promisify(exec);
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -146,13 +150,50 @@ ipcMain.handle('select-folder', async () => {
       const hasAlsFile = files.some(file => path.extname(file).toLowerCase() === '.als');
 
       if (hasAlsFile) {
-        console.log(true);
-        return { success: true, path: folderPath };
+        console.log("Folder contains Ableton Live Set (.als)");
+
+        // Initialize git repository
+        try {
+          // Call git init <project path> command
+          await execPromise('git init', { cwd: folderPath });
+          console.log('Git repository initialized');
+
+          // Create .gitignore
+          const gitignoreContent = await fs.readFile(path.join(__dirname, 'text/gitignore.txt'));
+          const gitignorePath = path.join(folderPath, '.gitignore');
+          await fs.writeFile(gitignorePath, gitignoreContent);
+          console.log('.gitignore created');
+
+          // Create .gitattributes
+          const gitattributesContent = await fs.readFile(path.join(__dirname, 'text/gitattributes.txt'));
+          const gitattributesPath = path.join(folderPath, '.gitattributes');
+          await fs.writeFile(gitattributesPath, gitattributesContent);
+          console.log('.gitattributes created');
+
+          // Append to .git/config
+          const gitConfigContent = await fs.readFile(path.join(__dirname, 'text/gitconfig.txt'));
+          const gitConfigPath = path.join(folderPath, '.git/config');
+          await fs.appendFile(gitConfigPath, gitConfigContent);
+          console.log('.git/config updated with zcat filter configuration');
+
+          dialog.showMessageBox({
+            type: 'info',
+            title: 'Repository Initialized',
+            message: 'Git repository successfully initialized!',
+            detail: 'Created .gitignore, .gitattributes, and configured git filters.'
+          });
+
+          return { success: true, path: folderPath };
+        } catch (gitError) {
+          console.error('Error initializing git:', gitError);
+          dialog.showErrorBox('Git Initialization Error', `Failed to initialize git repository: ${gitError.message}`);
+          return { success: false, error: gitError.message };
+        }
       } else {
         // Show error dialog to user
         dialog.showErrorBox(
-          'No Ableton Live Project Found',
-          'The selected folder does not contain any .als files. Please select a folder with an Ableton Live project.'
+          'No Ableton Live Set Found',
+          'The selected folder does not contain any .als files. Please select a folder with an Ableton Live Set file.'
         );
         return { success: false, error: 'No .als files found' };
       }
