@@ -12,15 +12,27 @@ document.getElementById('selectFolderBtn').addEventListener('click', async () =>
   }
 });
 
-// Create Version button handler (placeholder for future functionality)
+// Create Version button handler
 document.getElementById('createVersionBtn').addEventListener('click', async () => {
-  const result = await ipcRenderer.invoke('create-version');
+  // Get commit message from input field
+  const commitMessageInput = document.getElementById('commit-message');
+  const commitMessage = commitMessageInput.value.trim();
+
+  // Validate that message is not empty
+  if (!commitMessage) {
+    alert('Please enter a version description');
+    commitMessageInput.focus();
+    return;
+  }
+
+  // Send commit message to main process
+  const result = await ipcRenderer.invoke('create-version', commitMessage);
 
   if (result && result.success) {
-    console.log('Commit Created');
-    // TODO: Render Commit in app
+    console.log('Commit Created:', commitMessage);
+    // Clear the input field after successful commit
+    commitMessageInput.value = '';
   } else if (result && !result.success) {
     console.log('Error:', result.error);
   }
-  
 });

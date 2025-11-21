@@ -25,6 +25,15 @@ button {
   border-style: none;
 }
 
-#core-buttons {
+.core {
   display: flex;
+}
+
+input {
+  height: 1rem;
+  background-color: #838383;
+  color: white;
+}
+input::placeholder {
+  color: white;
 }

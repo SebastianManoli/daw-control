@@ -1,7 +1,10 @@
 const { ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { initializeGitRepository } = require('./git-handler');
+const { initializeGitRepository, createCommit } = require('./git-handler');
+
+// Store the current project path
+let currentProjectPath = null;
 
 /**
  * Register all IPC handlers for communication between main and renderer processes
@@ -31,6 +34,8 @@ function registerIpcHandlers() {
           const gitResult = await initializeGitRepository(folderPath);
 
           if (gitResult.success) {
+            // Store the project path for future operations
+            currentProjectPath = folderPath;
             return { success: true, path: folderPath };
           } else {
             return { success: false, error: gitResult.error };
@@ -50,6 +55,37 @@ function registerIpcHandlers() {
       }
     }
     return null;
+  });
+
+  // Handle creating a new version (commit)
+  ipcMain.handle('create-version', async (event, commitMessage) => {
+    // Check if a project is open
+    if (!currentProjectPath) {
+      dialog.showErrorBox('No Project Open', 'Please initialize a project first before creating a version.');
+      return { success: false, error: 'No project initialized' };
+    }
+
+    // Validate commit message
+    if (!commitMessage || commitMessage.trim() === '') {
+      dialog.showErrorBox('Invalid Message', 'Please enter a commit message.');
+      return { success: false, error: 'Empty commit message' };
+    }
+
+    // Create the commit
+    const commitResult = await createCommit(currentProjectPath, commitMessage);
+
+    if (commitResult.success) {
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Version Created',
+        message: 'New version created successfully!',
+        detail: `Commit message: ${commitMessage}`
+      });
+    } else {
+      dialog.showErrorBox('Commit Failed', `Failed to create version: ${commitResult.error}`);
+    }
+
+    return commitResult;
   });
 }
 
