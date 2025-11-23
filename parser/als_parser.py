@@ -5,7 +5,7 @@ from pathlib import Path
 from collections import Counter
 from typing import Dict
 
-als_project_path = ""
+als_project_path = "C:/Users/sebas/Documents/! FINAL YEAR/PROJECT/ableton-folders-test-cases/prototype-demo Project/prototype-demo.als"
 
 def open_als_xml(path:Path) -> ET.ElementTree:
     with gzip.open(path, 'rb') as f:
@@ -107,14 +107,17 @@ def extract_track_info(file_path):
     tree = open_als_xml(file_path)
     tracks = []
     
-    for track in tree.findall(".//MidiTrack"):
-        track_name = track.find(".//Name/UserName")
-        track_data = {
-            'name': track_name.get('Value') if track_name is not None else 'Untitled',
-            'color': track.find(".//Color").get('Value') if track.find(".//Color") is not None else None,
-            'devices': [device.tag for device in track.findall(".//Devices/*")]
-        }
-        tracks.append(track_data)
+    # Check all track types: MidiTrack, AudioTrack, ReturnTrack
+    for track_type in [".//MidiTrack", ".//AudioTrack", ".//ReturnTrack"]:
+        for track in tree.findall(track_type):
+            track_name = track.find(".//Name/UserName")
+            track_data = {
+                'name': track_name.get('Value') if track_name is not None else 'Untitled',
+                'type': track_type.split('/')[-1],  # Get track type name
+                'color': track.find(".//Color").get('Value') if track.find(".//Color") is not None else None,
+                'devices': [device.tag for device in track.findall(".//DeviceChain/DeviceChain/Devices/*")]
+            }
+            tracks.append(track_data)
     
     return tracks
 
@@ -183,11 +186,22 @@ def extract_plugin_names(file_path):
     return plugins
 
 if __name__ == "__main__":
+    # Debug: Let's see what the structure looks like
+    print("=== Inspecting ALS structure ===")
+    structure = als_inspect(Path(als_project_path))
+    
+    # Filter to show track-related paths
+    track_paths = {k: v for k, v in structure.items() if 'Track' in k}
+    print("\nTrack-related paths found:")
+    for path, count in sorted(track_paths.items()):
+        print(f"{path}: {count}")
+    
+    print("\n=== Extracting data ===")
     tempo = extract_tempo(Path(als_project_path))
-    print(tempo)
+    print(f"Tempo: {tempo}")
     midi = extract_track_info(Path(als_project_path))
-    print(midi)
+    print(f"Track info: {midi}")
     midinotes = count_notes_per_track(Path(als_project_path))
-    print(midinotes)
+    print(f"Notes per track: {midinotes}")
     plugins = extract_plugin_names(Path(als_project_path))
-    print(plugins)
+    print(f"Plugins: {plugins}")
