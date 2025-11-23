@@ -1,8 +1,8 @@
-const path = require('path');
-const fs = require('fs').promises;
-const { exec } = require('child_process');
-const util = require('util');
-const { dialog } = require('electron');
+const path = require('path'); // directory path utility
+const fs = require('fs').promises; // file system module for reading + writing files
+const { exec } = require('child_process'); // Runs shell commands from within Node.js
+const util = require('util'); // Utility functions like promises and callbacks
+const { dialog } = require('electron'); // native electron dialog
 
 const execPromise = util.promisify(exec);
 

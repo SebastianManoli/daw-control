@@ -1,4 +1,19 @@
 const { ipcRenderer } = require('electron');
+const path = require('path');
+
+/**
+ * Update the project name display
+ * @param {string} folderPath - The full project path
+ */
+function updateProjectName(folderPath) {
+  const projectNameEl = document.getElementById('project-name');
+  if (folderPath) {
+    const folderName = path.basename(folderPath);
+    projectNameEl.textContent = folderName;
+  } else {
+    projectNameEl.textContent = '';
+  }
+}
 
 /**
  * Handle restore button click
@@ -101,6 +116,8 @@ document.getElementById('selectFolderBtn').addEventListener('click', async () =>
 
   if (result && result.success) {
     console.log('Selected folder:', result.path);
+    // Update project name display
+    updateProjectName(result.path);
     // Load commits after project initialization
     await loadCommits();
   } else if (result && !result.success) {
