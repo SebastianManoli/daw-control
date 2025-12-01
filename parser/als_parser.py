@@ -5,11 +5,15 @@ from pathlib import Path
 from collections import Counter
 from typing import Dict
 
-als_project_path = "C:/Users/sebas/Documents/! FINAL YEAR/PROJECT/ableton-folders-test-cases/prototype-demo Project/prototype-demo.als"
+als_project_path = "C:/Users/sebas/Documents/! FINAL YEAR/PROJECT/ableton-folders-test-cases/demo Project/demo.als"
 
 def open_als_xml(path:Path) -> ET.ElementTree:
-    with gzip.open(path, 'rb') as f:
-        return ET.parse(f)
+    try:
+        with gzip.open(path, 'rb') as f:
+            return ET.parse(f)
+    except gzip.BadGzipFile:
+        with open(path, 'rb') as f:
+            return ET.parse(f)
 
 test = open_als_xml(Path(als_project_path))
 
@@ -186,22 +190,49 @@ def extract_plugin_names(file_path):
     return plugins
 
 if __name__ == "__main__":
-    # Debug: Let's see what the structure looks like
-    print("=== Inspecting ALS structure ===")
-    structure = als_inspect(Path(als_project_path))
+    file_path = Path(als_project_path)
     
-    # Filter to show track-related paths
-    track_paths = {k: v for k, v in structure.items() if 'Track' in k}
-    print("\nTrack-related paths found:")
-    for path, count in sorted(track_paths.items()):
-        print(f"{path}: {count}")
+    print("\n" + "="*60)
+    print(f"ABLETON PROJECT SUMMARY: {file_path.name}")
+    print("="*60 + "\n")
+
+    # 1. General Info
+    tempo = extract_tempo(file_path)
+    print(f"► TEMPO: {tempo} BPM\n")
+
+    # 2. Tracks
+    print("► TRACKS STRUCTURE:")
+    print(f"{'#':<4} {'Type':<12} {'Name':<30} {'Devices'}")
+    print("-" * 80)
     
-    print("\n=== Extracting data ===")
-    tempo = extract_tempo(Path(als_project_path))
-    print(f"Tempo: {tempo}")
-    midi = extract_track_info(Path(als_project_path))
-    print(f"Track info: {midi}")
-    midinotes = count_notes_per_track(Path(als_project_path))
-    print(f"Notes per track: {midinotes}")
-    plugins = extract_plugin_names(Path(als_project_path))
-    print(f"Plugins: {plugins}")
+    tracks = extract_track_info(file_path)
+    note_counts = count_notes_per_track(file_path)
+    
+    midi_track_index = 0
+    
+    for i, track in enumerate(tracks, 1):
+        name = track['name'] if track['name'] else "(Untitled)"
+        t_type = track['type']
+        devices = ", ".join(track['devices']) if track['devices'] else "-"
+        
+        extra_info = ""
+        if t_type == 'MidiTrack':
+            if midi_track_index < len(note_counts):
+                count = note_counts[midi_track_index]['note_count']
+                extra_info = f"[{count} notes]"
+                midi_track_index += 1
+        
+        print(f"{i:<4} {t_type:<12} {name:<30} {devices} {extra_info}")
+
+    print("\n")
+
+    # 3. Plugins
+    print("► THIRD-PARTY PLUGINS:")
+    plugins = extract_plugin_names(file_path)
+    if not plugins:
+        print("  No third-party plugins found.")
+    else:
+        for p in plugins:
+            print(f"  • {p['name']} ({p['vendor']}) [{p['format']}]")
+            
+    print("\n" + "="*60)
