@@ -5,7 +5,7 @@ from pathlib import Path
 from collections import Counter
 from typing import Dict
 
-als_project_path = "C:/Users/sebas/Documents/! FINAL YEAR/PROJECT/ableton-folders-test-cases/demo Project/demo.als"
+als_project_path = "C:/MUSIC onli®/PROJECT FILES/2026 FLP/01 JANUARY FLP/school kid @onliwakeup @madd.maks Project/school kid @onliwakeup @madd.maks.als"
 
 def open_als_xml(path:Path) -> ET.ElementTree:
     try:
@@ -107,6 +107,88 @@ def extract_tempo(file_path):
     tempo_element = tree.find(".//Tempo/Manual")
     return float(tempo_element.get('Value')) if tempo_element is not None else 120.0
 
+def get_device_name(device_element):
+    """
+    Resolve the device name. If it's a plugin, try to get the plugin name.
+    """
+    # VST2
+    vst = device_element.find(".//PluginDesc/VstPluginInfo/PlugName")
+    if vst is not None and vst.get('Value'):
+        return vst.get('Value')
+    
+    # VST3
+    vst3 = device_element.find(".//PluginDesc/Vst3PluginInfo/Name")
+    if vst3 is not None and vst3.get('Value'):
+        return vst3.get('Value')
+
+    # AU
+    au = device_element.find(".//PluginDesc/AuPluginInfo/Name")
+    if au is not None and au.get('Value'):
+        return au.get('Value')
+        
+    return device_element.tag
+
+
+def get_clip_names(track_element):
+    """
+    Extract names of all clips (Session and Arrangement) in the track.
+    Returns a list of unique clip names found.
+    """
+    clip_names = []
+    
+    # helper to check name nodes
+    def _extract_name(node):
+        # Try UserName first
+        user = node.find(".//Name/UserName")
+        if user is not None and user.get('Value'):
+            return user.get('Value')
+        # Then EffectiveName
+        eff = node.find(".//Name/EffectiveName")
+        if eff is not None and eff.get('Value'):
+            return eff.get('Value')
+        return None
+
+    # Search for MidiClip and AudioClip elements
+    for clip in track_element.findall(".//MidiClip") + track_element.findall(".//AudioClip"):
+        name = _extract_name(clip)
+        if name:
+            clip_names.append(name)
+            
+    # Return unique names to avoid clutter if loop is repeated
+    # Preserve order
+    seen = set()
+    unique = []
+    for c in clip_names:
+        if c not in seen:
+            unique.append(c)
+            seen.add(c)
+            
+    return unique
+
+def extract_master_track_info(file_path):
+    tree = open_als_xml(file_path)
+    # Check for MainTrack (Live 12+) or MasterTrack (older versions)
+    master_track = tree.find(".//MainTrack")
+    if master_track is None:
+        master_track = tree.find(".//MasterTrack")
+    
+    if master_track is None:
+        return None
+        
+    devices = []
+    # Note: Structure might be slightly deeper or different in newer versions
+    # Debug output showed: Ableton/LiveSet/MainTrack/DeviceChain/DeviceChain/Devices/...
+    
+    # Try looking for Devices container recursively inside the master track
+    devices_container = master_track.find(".//Devices")
+    if devices_container is not None:
+        for device in devices_container:
+            devices.append(get_device_name(device))
+            
+    return {
+        'devices': devices
+    }
+
 def extract_track_info(file_path):
     tree = open_als_xml(file_path)
     tracks = []
@@ -114,12 +196,34 @@ def extract_track_info(file_path):
     # Check all track types: MidiTrack, AudioTrack, ReturnTrack
     for track_type in [".//MidiTrack", ".//AudioTrack", ".//ReturnTrack"]:
         for track in tree.findall(track_type):
-            track_name = track.find(".//Name/UserName")
+            # Try UserName (custom name) first
+            track_name_elem = track.find(".//Name/UserName")
+            track_name_val = track_name_elem.get('Value') if track_name_elem is not None else ""
+
+            # If UserName is empty, try EffectiveName (default/displayed name)
+            if not track_name_val:
+                effective_name_elem = track.find(".//Name/EffectiveName")
+                if effective_name_elem is not None:
+                    track_name_val = effective_name_elem.get('Value')
+
+            devices = []
+            # Find the main device chain. 
+            # Instead of a fixed path, look for the first <Devices> element.
+            # This is usually the track's main device chain.
+            devices_container = track.find(".//Devices")
+            if devices_container is not None:
+                for device in devices_container:
+                    devices.append(get_device_name(device))
+
+            # Extract Clips
+            clips = get_clip_names(track)
+
             track_data = {
-                'name': track_name.get('Value') if track_name is not None else 'Untitled',
+                'name': track_name_val if track_name_val else 'Untitled',
                 'type': track_type.split('/')[-1],  # Get track type name
                 'color': track.find(".//Color").get('Value') if track.find(".//Color") is not None else None,
-                'devices': [device.tag for device in track.findall(".//DeviceChain/DeviceChain/Devices/*")]
+                'devices': devices,
+                'clips': clips
             }
             tracks.append(track_data)
     
@@ -133,8 +237,8 @@ def extract_plugin_names(file_path):
     tree = open_als_xml(file_path)
     plugins = []
     
-    # Search in all track types
-    for track_type in [".//MidiTrack", ".//AudioTrack", ".//ReturnTrack", ".//MasterTrack"]:
+    # Search in all track types including MainTrack/MasterTrack
+    for track_type in [".//MidiTrack", ".//AudioTrack", ".//ReturnTrack", ".//MasterTrack", ".//MainTrack"]:
         tracks = tree.findall(track_type)
         
         for track in tracks:
@@ -153,7 +257,6 @@ def extract_plugin_names(file_path):
                     plugin_info = {
                         'name': plugin_name_elem.get('Value') if plugin_name_elem is not None else 'Unknown VST',
                         'format': 'VST',
-                        'vendor': vendor_elem.get('Value') if vendor_elem is not None else 'Unknown'
                     }
                 
                 # Check for VST3 plugin
@@ -165,7 +268,6 @@ def extract_plugin_names(file_path):
                     plugin_info = {
                         'name': plugin_name_elem.get('Value') if plugin_name_elem is not None else 'Unknown VST3',
                         'format': 'VST3',
-                        'vendor': vendor_elem.get('Value') if vendor_elem is not None else 'Unknown'
                     }
                 
                 # Check for Audio Unit plugin
@@ -177,7 +279,6 @@ def extract_plugin_names(file_path):
                     plugin_info = {
                         'name': au_name_elem.get('Value') if au_name_elem is not None else 'Unknown AU',
                         'format': 'Audio Unit',
-                        'vendor': manufacturer_elem.get('Value') if manufacturer_elem is not None else 'Unknown'
                     }
                 
                 # Add plugin if found
@@ -198,7 +299,15 @@ if __name__ == "__main__":
 
     # 1. General Info
     tempo = extract_tempo(file_path)
-    print(f"► TEMPO: {tempo} BPM\n")
+    print(f"► TEMPO: {tempo} BPM")
+    
+    master = extract_master_track_info(file_path)
+    print("MASTER TRACK:")
+    if master:
+        devs = ", ".join(master['devices']) if master['devices'] else "--"
+        print(f"devices: {devs}\n")
+    else:
+        print("devices: (Not found)\n")
 
     # 2. Tracks
     print("► TRACKS STRUCTURE:")
@@ -222,7 +331,7 @@ if __name__ == "__main__":
                 extra_info = f"[{count} notes]"
                 midi_track_index += 1
         
-        print(f"{i:<4} {t_type:<12} {name:<30} {devices} {extra_info}")
+        print(f"{i:<4} {t_type:<12} {name:<30} {devices} {extra_info}") 
 
     print("\n")
 
@@ -233,6 +342,6 @@ if __name__ == "__main__":
         print("  No third-party plugins found.")
     else:
         for p in plugins:
-            print(f"  • {p['name']} ({p['vendor']}) [{p['format']}]")
+            print(f"  • {p['name']} [{p['format']}]")
             
     print("\n" + "="*60)
