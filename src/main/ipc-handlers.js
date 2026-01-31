@@ -1,7 +1,17 @@
 const { ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { initializeGitRepository, createCommit, getCommitHistory, restoreCommit, checkWorkingDirectoryStatus, discardChanges } = require('./git-handler');
+const {
+  initializeGitRepository,
+  createCommit,
+  getCommitHistory,
+  restoreCommit,
+  checkWorkingDirectoryStatus,
+  discardChanges,
+  findAlsFile,
+  getFileAtCommit
+} = require('./git-handler');
+const { parseAlsContent } = require('./parser-handler');
 
 // Store the current project path
 let currentProjectPath = null;
@@ -156,6 +166,51 @@ function registerIpcHandlers() {
     }
 
     return restoreResult;
+  });
+
+  // Handle parsing ALS file from a specific commit
+  ipcMain.handle('parse-commit', async (event, commitHash) => {
+    if (!currentProjectPath) {
+      return { success: false, error: 'No project opened' };
+    }
+
+    try {
+      // Find the ALS file in the project
+      const alsResult = await findAlsFile(currentProjectPath);
+      if (!alsResult.success) {
+        return { success: false, error: alsResult.error };
+      }
+
+      // Get the file content from the specified commit
+      const fileResult = await getFileAtCommit(
+        currentProjectPath,
+        commitHash,
+        alsResult.alsPath
+      );
+
+      if (!fileResult.success) {
+        return { success: false, error: fileResult.error };
+      }
+
+      // Parse the ALS content
+      const parseResult = await parseAlsContent(
+        fileResult.content,
+        alsResult.alsName
+      );
+
+      if (!parseResult.success) {
+        return { success: false, error: parseResult.error };
+      }
+
+      return {
+        success: true,
+        data: parseResult.data,
+        commitHash: commitHash
+      };
+    } catch (error) {
+      console.error('Error parsing commit:', error);
+      return { success: false, error: error.message };
+    }
   });
 }
 

@@ -1,13 +1,15 @@
 import gzip
+import json
+import sys
 from xml.etree import ElementTree as ET
 from pathlib import Path
 
 from collections import Counter
-from typing import Dict
+from typing import Dict, Optional
 
-als_project_path = "C:/MUSIC onli®/PROJECT FILES/2026 FLP/01 JANUARY FLP/school kid @onliwakeup @madd.maks Project/school kid @onliwakeup @madd.maks.als"
 
-def open_als_xml(path:Path) -> ET.ElementTree:
+def open_als_xml(path: Path) -> ET.ElementTree:
+    """Open an ALS file from disk (handles both gzipped and raw XML)."""
     try:
         with gzip.open(path, 'rb') as f:
             return ET.parse(f)
@@ -15,16 +17,20 @@ def open_als_xml(path:Path) -> ET.ElementTree:
         with open(path, 'rb') as f:
             return ET.parse(f)
 
-test = open_als_xml(Path(als_project_path))
+
+def parse_als_from_string(xml_content: str) -> ET.ElementTree:
+    """Parse ALS XML content from a string (already decompressed)."""
+    root = ET.fromstring(xml_content)
+    tree = ET.ElementTree(root)
+    return tree
 
 # print(test)
 
-def als_inspect(path: Path) -> Dict[str, int]:
+def als_inspect(tree: ET.ElementTree) -> Dict[str, int]:
     """
     Produce a rough frequency summary of XML element paths to guide schema mapping.
     Safe to run on any ALS without knowing its exact schema.
     """
-    tree = open_als_xml(path)
     root = tree.getroot()
     counter: Counter[str] = Counter()
 
@@ -38,8 +44,7 @@ def als_inspect(path: Path) -> Dict[str, int]:
     walk(root, "")
     return dict(counter)
                         
-def parse_als_with_values(file_path):
-    tree = open_als_xml(file_path)
+def parse_als_with_values(tree: ET.ElementTree):
     root = tree.getroot()
     
     def extract_with_values(element, path="", level=0):
@@ -61,8 +66,7 @@ def parse_als_with_values(file_path):
     
     extract_with_values(root)
     
-def extract_midi_notes(file_path):
-    tree = open_als_xml(file_path)
+def extract_midi_notes(tree: ET.ElementTree):
     
     # Find all MIDI notes
     notes = tree.findall(".//MidiNoteEvent")
@@ -80,9 +84,8 @@ def extract_midi_notes(file_path):
     
     return midi_data
 
-def count_notes_per_track(file_path):
+def count_notes_per_track(tree: ET.ElementTree):
     """Count the number of MIDI notes in each track."""
-    tree = open_als_xml(file_path)
     track_note_counts = []
     
     # Find all MIDI tracks
@@ -102,31 +105,43 @@ def count_notes_per_track(file_path):
     
     return track_note_counts
 
-def extract_tempo(file_path):
-    tree = open_als_xml(file_path)
+def extract_tempo(tree: ET.ElementTree):
     tempo_element = tree.find(".//Tempo/Manual")
     return float(tempo_element.get('Value')) if tempo_element is not None else 120.0
 
-def get_device_name(device_element):
+def get_device_info(device_element):
     """
-    Resolve the device name. If it's a plugin, try to get the plugin name.
+    Resolve the device name and type.
+    Returns a dict with 'name' and 'type'.
     """
+    name = device_element.tag
+    dev_type = "native"
+    
+    # Check for Plugin info
     # VST2
     vst = device_element.find(".//PluginDesc/VstPluginInfo/PlugName")
     if vst is not None and vst.get('Value'):
-        return vst.get('Value')
+        name = vst.get('Value')
+        dev_type = "vst2"
     
     # VST3
     vst3 = device_element.find(".//PluginDesc/Vst3PluginInfo/Name")
     if vst3 is not None and vst3.get('Value'):
-        return vst3.get('Value')
+        name = vst3.get('Value')
+        dev_type = "vst3"
 
     # AU
     au = device_element.find(".//PluginDesc/AuPluginInfo/Name")
     if au is not None and au.get('Value'):
-        return au.get('Value')
+        name = au.get('Value')
+        dev_type = "au"
         
-    return device_element.tag
+    # Heuristic for instrument vs effect could go here, but relying on format for now
+    # or simple XML tag checks if needed.
+    return {'name': name, 'type': dev_type}
+
+def get_device_name(device_element):
+    return get_device_info(device_element)['name']
 
 
 def get_clip_names(track_element):
@@ -165,8 +180,7 @@ def get_clip_names(track_element):
             
     return unique
 
-def extract_master_track_info(file_path):
-    tree = open_als_xml(file_path)
+def extract_master_track_info(tree: ET.ElementTree):
     # Check for MainTrack (Live 12+) or MasterTrack (older versions)
     master_track = tree.find(".//MainTrack")
     if master_track is None:
@@ -183,14 +197,14 @@ def extract_master_track_info(file_path):
     devices_container = master_track.find(".//Devices")
     if devices_container is not None:
         for device in devices_container:
-            devices.append(get_device_name(device))
+                    devices.append(get_device_info(device))
             
     return {
+        'type': 'Master',
         'devices': devices
     }
 
-def extract_track_info(file_path):
-    tree = open_als_xml(file_path)
+def extract_track_info(tree: ET.ElementTree):
     tracks = []
     
     # Check all track types: MidiTrack, AudioTrack, ReturnTrack
@@ -213,7 +227,7 @@ def extract_track_info(file_path):
             devices_container = track.find(".//Devices")
             if devices_container is not None:
                 for device in devices_container:
-                    devices.append(get_device_name(device))
+                    devices.append(get_device_info(device))
 
             # Extract Clips
             clips = get_clip_names(track)
@@ -225,16 +239,16 @@ def extract_track_info(file_path):
                 'devices': devices,
                 'clips': clips
             }
+
             tracks.append(track_data)
     
     return tracks
 
-def extract_plugin_names(file_path):
+def extract_plugin_names(tree: ET.ElementTree):
     """
     Extract the names of all third-party plugins (VST/AU) used in the project.
     Returns a list of unique plugin names with their format and vendor.
     """
-    tree = open_als_xml(file_path)
     plugins = []
     
     # Search in all track types including MainTrack/MasterTrack
@@ -290,58 +304,50 @@ def extract_plugin_names(file_path):
     
     return plugins
 
+def parse_als_to_json(tree: ET.ElementTree, project_name: str = "Unknown") -> dict:
+    """
+    Parse an ALS ElementTree and return a dictionary with project data.
+    """
+    # Gather data
+    tempo = extract_tempo(tree)
+    master_info = extract_master_track_info(tree)
+    raw_tracks = extract_track_info(tree)
+    plugins = extract_plugin_names(tree)
+
+    # Process tracks into categories
+    midi_tracks = [t for t in raw_tracks if t['type'] == 'MidiTrack']
+    audio_tracks = [t for t in raw_tracks if t['type'] == 'AudioTrack']
+    return_tracks = [t for t in raw_tracks if t['type'] == 'ReturnTrack']
+
+    # Build final dictionary
+    project_data = {
+        "project_name": project_name,
+        "tempo": tempo,
+        "tracks": {
+            "master": master_info if master_info else {"type": "Master", "devices": []},
+            "midi_tracks": midi_tracks,
+            "audio_tracks": audio_tracks,
+            "return_tracks": return_tracks
+        },
+        "third_party_vsts": plugins
+    }
+
+    return project_data
+
+
 if __name__ == "__main__":
-    file_path = Path(als_project_path)
-    
-    print("\n" + "="*60)
-    print(f"ABLETON PROJECT SUMMARY: {file_path.name}")
-    print("="*60 + "\n")
+    project_name = "Unknown"
 
-    # 1. General Info
-    tempo = extract_tempo(file_path)
-    print(f"► TEMPO: {tempo} BPM")
-    
-    master = extract_master_track_info(file_path)
-    print("MASTER TRACK:")
-    if master:
-        devs = ", ".join(master['devices']) if master['devices'] else "--"
-        print(f"devices: {devs}\n")
+    if len(sys.argv) > 1:
+        # File path provided as argument
+        file_path = Path(sys.argv[1])
+        project_name = file_path.name
+        tree = open_als_xml(file_path)
     else:
-        print("devices: (Not found)\n")
+        # Read from stdin (already decompressed XML from git show)
+        xml_content = sys.stdin.read()
+        tree = parse_als_from_string(xml_content)
 
-    # 2. Tracks
-    print("► TRACKS STRUCTURE:")
-    print(f"{'#':<4} {'Type':<12} {'Name':<30} {'Devices'}")
-    print("-" * 80)
-    
-    tracks = extract_track_info(file_path)
-    note_counts = count_notes_per_track(file_path)
-    
-    midi_track_index = 0
-    
-    for i, track in enumerate(tracks, 1):
-        name = track['name'] if track['name'] else "(Untitled)"
-        t_type = track['type']
-        devices = ", ".join(track['devices']) if track['devices'] else "-"
-        
-        extra_info = ""
-        if t_type == 'MidiTrack':
-            if midi_track_index < len(note_counts):
-                count = note_counts[midi_track_index]['note_count']
-                extra_info = f"[{count} notes]"
-                midi_track_index += 1
-        
-        print(f"{i:<4} {t_type:<12} {name:<30} {devices} {extra_info}") 
-
-    print("\n")
-
-    # 3. Plugins
-    print("► THIRD-PARTY PLUGINS:")
-    plugins = extract_plugin_names(file_path)
-    if not plugins:
-        print("  No third-party plugins found.")
-    else:
-        for p in plugins:
-            print(f"  • {p['name']} [{p['format']}]")
-            
-    print("\n" + "="*60)
+    # Parse and output JSON
+    project_data = parse_als_to_json(tree, project_name)
+    print(json.dumps(project_data, indent=2))
