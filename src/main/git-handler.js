@@ -193,4 +193,71 @@ async function getCommitHistory(folderPath, limit = 50) {
   }
 }
 
-module.exports = { initializeGitRepository, createCommit, getCommitHistory, restoreCommit, checkWorkingDirectoryStatus, discardChanges };
+/**
+ * Find the .als file in a project folder
+ * @param {string} folderPath - Path to the project folder
+ * @returns {Promise<{success: boolean, alsPath?: string, alsName?: string, error?: string}>}
+ */
+async function findAlsFile(folderPath) {
+  try {
+    const files = await fs.readdir(folderPath);
+    const alsFile = files.find(file => path.extname(file).toLowerCase() === '.als');
+
+    if (alsFile) {
+      return {
+        success: true,
+        alsPath: alsFile,  // Relative path (just filename)
+        alsName: alsFile
+      };
+    }
+
+    return { success: false, error: 'No .als file found in project' };
+  } catch (error) {
+    console.error('Error finding ALS file:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get file content from a specific commit
+ * Uses git show to retrieve file content at a specific commit hash.
+ * Note: With zcat filter configured, .als files are stored uncompressed,
+ * so git show returns the raw XML.
+ *
+ * @param {string} folderPath - Path to the git repository
+ * @param {string} commitHash - Hash of the commit
+ * @param {string} filePath - Path to the file (relative to repo root)
+ * @returns {Promise<{success: boolean, content?: string, error?: string}>}
+ */
+async function getFileAtCommit(folderPath, commitHash, filePath) {
+  try {
+    // Use git show to get file content at specific commit
+    // maxBuffer increased for large ALS files
+    const { stdout } = await execPromise(
+      `git show ${commitHash}:"${filePath}"`,
+      {
+        cwd: folderPath,
+        maxBuffer: 50 * 1024 * 1024  // 50MB buffer for large files
+      }
+    );
+
+    return {
+      success: true,
+      content: stdout
+    };
+  } catch (error) {
+    console.error('Error getting file at commit:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+module.exports = {
+  initializeGitRepository,
+  createCommit,
+  getCommitHistory,
+  restoreCommit,
+  checkWorkingDirectoryStatus,
+  discardChanges,
+  findAlsFile,
+  getFileAtCommit
+};

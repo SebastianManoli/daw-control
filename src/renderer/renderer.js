@@ -40,6 +40,36 @@ async function handleRestoreClick(event) {
 }
 
 /**
+ * Handle commit click to parse and display ALS data
+ * @param {Event} event - Click event
+ */
+async function handleCommitClick(event) {
+  const commitHash = event.currentTarget.dataset.commitHash;
+
+  if (!commitHash) {
+    console.error('No commit hash found');
+    return;
+  }
+
+  console.log('Parsing commit:', commitHash);
+
+  // Call IPC to parse the ALS file from this commit
+  const result = await ipcRenderer.invoke('parse-commit', commitHash);
+
+  if (result && result.success) {
+    console.log('Parsed ALS data:', result.data);
+    console.log('Project name:', result.data.project_name);
+    console.log('Tempo:', result.data.tempo);
+    console.log('MIDI tracks:', result.data.tracks.midi_tracks.length);
+    console.log('Audio tracks:', result.data.tracks.audio_tracks.length);
+    console.log('Return tracks:', result.data.tracks.return_tracks.length);
+    console.log('Third-party plugins:', result.data.third_party_vsts);
+  } else if (result && !result.success) {
+    console.error('Parse failed:', result.error);
+  }
+}
+
+/**
  * Fetch and display commits from the git repository
  */
 async function loadCommits() {
@@ -56,9 +86,12 @@ async function loadCommits() {
       const commitItem = document.createElement('div');
       commitItem.className = 'commit-item';
 
-      // Commit content (message and metadata)
+      // Commit content (message and metadata) - clickable to parse
       const commitContent = document.createElement('div');
       commitContent.className = 'commit-content';
+      commitContent.style.cursor = 'pointer';
+      commitContent.dataset.commitHash = commit.hash;
+      commitContent.addEventListener('click', handleCommitClick);
 
       const commitMessage = document.createElement('div');
       commitMessage.className = 'commit-message';
