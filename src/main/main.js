@@ -10,7 +10,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
-    }
+    },
+    icon: "src/renderer/styles/Asset 8@4x.png"
   });
 
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
