@@ -3,18 +3,26 @@ const path = require('path');
 const { createMenu } = require('./menu');
 const { registerIpcHandlers } = require('./ipc-handlers');
 
+const isDev = !app.isPackaged;
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     },
     icon: "src/renderer/styles/Asset 8@4x.png"
   });
 
-  win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  if (isDev) {
+    win.loadURL('http://localhost:5173');
+    win.webContents.openDevTools();
+  } else {
+    win.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+  }
 }
 
 app.whenReady().then(() => {

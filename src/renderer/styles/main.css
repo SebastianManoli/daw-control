@@ -1,94 +1,235 @@
-body {
+/* Base styles */
+* {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100vh;
+}
+
+body {
   font-family: "inter-variable", sans-serif;
   font-variation-settings: "slnt" 0, "wght" 400;
-  background:#2a2a2a 100%;
+  background: #1a1a1a;
+  color: #ffffff;
+  min-height: 100vh;
 }
 
-h1 {
-  color: white;
+#root {
+  min-height: 100vh;
+}
+
+/* App layout */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
   font-size: 2rem;
+  font-weight: 600;
   margin-bottom: 8px;
 }
 
-#project-name {
+.project-name {
   color: #999;
   font-size: 0.9rem;
-  margin-bottom: 20px;
 }
 
-button {
-  margin: 4px;
-  font-size: 1rem;
+/* Control Panel */
+.control-panel {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #57a53f;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #6bc04a;
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: #4a8a35;
+}
+
+.btn-secondary {
   background-color: #3f3f3f;
   color: white;
-  cursor: pointer;
-  border-style: none;
 }
 
-.core {
+.btn-secondary:hover:not(:disabled) {
+  background-color: #4a4a4a;
+}
+
+/* Create Version */
+.create-version {
   display: flex;
+  gap: 8px;
+  flex: 1;
 }
 
-input {
-  height: 1rem;
-  background-color: #838383;
+.version-input {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  background-color: #2a2a2a;
+  border: 1px solid #3f3f3f;
+  border-radius: 6px;
   color: white;
-}
-input::placeholder {
-  color: white;
+  transition: border-color 0.2s ease;
 }
 
-#commits-container {
-  margin-top: 30px;
-  width: 80%;
-  max-width: 800px;
+.version-input:focus {
+  outline: none;
+  border-color: #57a53f;
 }
 
-h2 {
-  color: white;
-  font-size: 1.5rem;
-  margin-bottom: 15px;
+.version-input::placeholder {
+  color: #666;
 }
 
-#commits-list {
+.version-input:disabled {
+  opacity: 0.5;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+}
+
+/* Version History */
+.version-history h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* Commits List */
+.commits-list {
+  background-color: #222;
+  border-radius: 8px;
+  padding: 8px;
   max-height: 400px;
   overflow-y: auto;
-  background-color: #1f1f1f;
-  padding: 10px;
 }
 
+/* Scrollbar styling */
+.commits-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.commits-list::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.commits-list::-webkit-scrollbar-thumb {
+  background: #3f3f3f;
+  border-radius: 4px;
+}
+
+.commits-list::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Commit Item */
 .commit-item {
-  background-color: #3f3f3f;
-  padding: 12px;
+  background-color: #2a2a2a;
+  padding: 14px;
   margin-bottom: 8px;
+  border-radius: 6px;
   border-left: 3px solid #57a53f;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.commit-item:last-child {
+  margin-bottom: 0;
+}
+
+.commit-item:hover {
+  background-color: #333;
 }
 
 .commit-content {
   flex: 1;
+  cursor: pointer;
+}
+
+.commit-message {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.commit-meta {
+  font-size: 0.8rem;
+  color: #888;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.commit-hash {
+  color: #57a53f;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.commit-author {
+  color: #888;
+}
+
+.commit-date {
+  color: #666;
 }
 
 .commit-actions {
-  margin-left: 15px;
+  margin-left: 16px;
 }
 
 .restore-btn {
-  padding: 6px 12px;
+  padding: 8px 14px;
   font-size: 0.85rem;
+  font-weight: 500;
   background-color: #57a53f;
   color: white;
   border: none;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s ease;
 }
 
 .restore-btn:hover {
@@ -99,35 +240,10 @@ h2 {
   background-color: #4a8a35;
 }
 
-.commit-message {
-  color: white;
-  font-size: 1rem;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.commit-meta {
-  color: #999;
-  font-size: 0.85rem;
-}
-
-.commit-hash {
-  color: #57a53f;
-  font-family: monospace;
-  margin-right: 10px;
-}
-
-.commit-author {
-  margin-right: 10px;
-}
-
-.commit-date {
-  color: #777;
-}
-
+/* No commits message */
 .no-commits {
-  color: #999;
+  color: #666;
   text-align: center;
-  padding: 20px;
+  padding: 40px 20px;
   font-style: italic;
 }
