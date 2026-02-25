@@ -9,6 +9,7 @@ export function ProjectProvider({ children }) {
   const [commits, setCommits] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCommit, setSelectedCommit] = useState(null);
+  const [headCommit, setHeadCommit] = useState(null);
   const [parsedData, setParsedData] = useState(null);
 
   const electron = useElectron();
@@ -21,6 +22,7 @@ export function ProjectProvider({ children }) {
     const result = await electron.getCommits();
     if (result.success) {
       setCommits(result.commits);
+      if (result.headCommit) setHeadCommit(result.headCommit);
     }
     setIsLoading(false);
   }, [electron, isProjectOpen]);
@@ -43,6 +45,7 @@ export function ProjectProvider({ children }) {
 
         if (commitsResult?.success) {
           setCommits(commitsResult.commits || []);
+          if (commitsResult.headCommit) setHeadCommit(commitsResult.headCommit);
         }
         setIsLoading(false);
       }
@@ -71,6 +74,7 @@ export function ProjectProvider({ children }) {
     const result = await electron.restoreCommit(commitHash);
     if (result.success) {
       await loadCommits();
+      setHeadCommit(commitHash);
     }
     setIsLoading(false);
     return result;
@@ -95,6 +99,7 @@ export function ProjectProvider({ children }) {
     isLoading,
     isProjectOpen,
     selectedCommit,
+    headCommit,
     parsedData,
 
     // Actions

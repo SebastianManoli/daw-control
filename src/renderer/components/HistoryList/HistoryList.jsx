@@ -3,7 +3,7 @@ import { useProject } from '../../context/ProjectContext';
 import { CommitListItem } from './CommitListItem';
 
 export function HistoryList() {
-  const { commits, selectedCommit, parseVersion, restoreVersion } = useProject();
+  const { commits, selectedCommit, headCommit, parseVersion, restoreVersion } = useProject();
   const [contextMenu, setContextMenu] = useState(null);
 
   const handleContextMenu = useCallback((hash, pos) => {
@@ -38,6 +38,7 @@ export function HistoryList() {
           key={commit.hash}
           commit={commit}
           isSelected={selectedCommit === commit.hash}
+          isHead={headCommit === commit.hash}
           onClick={parseVersion}
           onContextMenu={handleContextMenu}
         />

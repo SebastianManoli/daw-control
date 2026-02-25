@@ -374,6 +374,20 @@ body {
   text-overflow: ellipsis;
   color: #d9d9d9;
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.commit-head-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #fea741;
+  color: #1a1a1a;
+  flex-shrink: 0;
 }
 
 .commit-list-meta {

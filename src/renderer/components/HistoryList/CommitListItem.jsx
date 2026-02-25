@@ -21,7 +21,7 @@ function getInitial(name) {
   return name.charAt(0).toUpperCase();
 }
 
-export function CommitListItem({ commit, isSelected, onClick, onContextMenu }) {
+export function CommitListItem({ commit, isSelected, isHead, onClick, onContextMenu }) {
   const handleContextMenu = (e) => {
     e.preventDefault();
     onContextMenu?.(commit.hash, { x: e.clientX, y: e.clientY });
@@ -37,7 +37,10 @@ export function CommitListItem({ commit, isSelected, onClick, onContextMenu }) {
         {getInitial(commit.author)}
       </div>
       <div className="commit-list-body">
-        <div className="commit-list-message">{commit.message}</div>
+        <div className="commit-list-message">
+          {commit.message}
+          {isHead && <span className="commit-head-badge">HEAD</span>}
+        </div>
         <div className="commit-list-meta">
           <span className="commit-list-author">{commit.author}</span>
           <span className="commit-list-date">{formatRelativeDate(commit.date)}</span>

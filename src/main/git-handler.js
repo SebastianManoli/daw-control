@@ -251,6 +251,21 @@ async function getFileAtCommit(folderPath, commitHash, filePath) {
   }
 }
 
+/**
+ * Get the current HEAD commit hash
+ * @param {string} folderPath - Path to the git repository
+ * @returns {Promise<{success: boolean, hash?: string, error?: string}>}
+ */
+async function getHeadCommitHash(folderPath) {
+  try {
+    const { stdout } = await execPromise('git rev-parse HEAD', { cwd: folderPath });
+    return { success: true, hash: stdout.trim() };
+  } catch (error) {
+    console.error('Error getting HEAD commit hash:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   initializeGitRepository,
   createCommit,
@@ -259,5 +274,6 @@ module.exports = {
   checkWorkingDirectoryStatus,
   discardChanges,
   findAlsFile,
-  getFileAtCommit
+  getFileAtCommit,
+  getHeadCommitHash
 };

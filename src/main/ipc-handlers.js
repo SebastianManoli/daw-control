@@ -9,7 +9,8 @@ const {
   checkWorkingDirectoryStatus,
   discardChanges,
   findAlsFile,
-  getFileAtCommit
+  getFileAtCommit,
+  getHeadCommitHash
 } = require('./git-handler');
 const { parseAlsContent } = require('./parser-handler');
 
@@ -104,7 +105,12 @@ function registerIpcHandlers() {
       return { success: false, error: 'No project opened', commits: [] };
     }
 
-    return await getCommitHistory(currentProjectPath);
+    const result = await getCommitHistory(currentProjectPath);
+    const headResult = await getHeadCommitHash(currentProjectPath);
+    if (headResult.success) {
+      result.headCommit = headResult.hash;
+    }
+    return result;
   });
 
   // Handle restoring to a specific commit
