@@ -1,0 +1,1 @@
+export { CommitMessageForm } from './CommitMessageForm';

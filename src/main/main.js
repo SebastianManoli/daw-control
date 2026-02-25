@@ -1,14 +1,16 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
-const { createMenu } = require('./menu');
+const { getMenuTemplate } = require('./menu');
 const { registerIpcHandlers } = require('./ipc-handlers');
 
 const isDev = !app.isPackaged;
+let mainWindow;
 
 function createWindow() {
-  const win = new BrowserWindow({
-    width: 800,
+  mainWindow = new BrowserWindow({
+    width: 1000,
     height: 600,
+    frame: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -17,16 +19,44 @@ function createWindow() {
     icon: "src/renderer/styles/Asset 8@4x.png"
   });
 
+  // Hide the default menu bar (we render our own in the renderer)
+  mainWindow.setMenuBarVisibility(false);
+
   if (isDev) {
-    win.loadURL('http://localhost:5173');
-    win.webContents.openDevTools();
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
   }
 }
 
+// Window control IPC handlers
+ipcMain.on('window-minimize', () => mainWindow?.minimize());
+ipcMain.on('window-maximize', () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+ipcMain.on('window-close', () => mainWindow?.close());
+
+// Menu popup IPC handler
+ipcMain.handle('get-menu-labels', () => {
+  const template = getMenuTemplate();
+  return template.map((item) => item.label);
+});
+
+ipcMain.on('popup-menu', (event, menuLabel) => {
+  const template = getMenuTemplate();
+  const menuItem = template.find((item) => item.label === menuLabel);
+  if (menuItem?.submenu) {
+    const menu = Menu.buildFromTemplate(menuItem.submenu);
+    menu.popup({ window: mainWindow });
+  }
+});
+
 app.whenReady().then(() => {
-  createMenu();
   registerIpcHandlers();
   createWindow();
 

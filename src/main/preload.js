@@ -12,4 +12,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Parsing
   parseCommit: (commitHash) => ipcRenderer.invoke('parse-commit', commitHash),
+
+  // Window controls
+  windowMinimize: () => ipcRenderer.send('window-minimize'),
+  windowMaximize: () => ipcRenderer.send('window-maximize'),
+  windowClose: () => ipcRenderer.send('window-close'),
+
+  // Menu
+  getMenuLabels: () => ipcRenderer.invoke('get-menu-labels'),
+  popupMenu: (menuLabel) => ipcRenderer.send('popup-menu', menuLabel),
 });
