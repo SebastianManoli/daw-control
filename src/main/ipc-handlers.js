@@ -1,4 +1,4 @@
-const { ipcMain, dialog, BrowserWindow } = require('electron');
+const { ipcMain, dialog, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const fsModule = require('fs');
 const fs = fsModule.promises;
@@ -79,6 +79,27 @@ function stopFileWatcher() {
     fileWatcher = null;
     console.log('File watcher stopped');
   }
+}
+
+/**
+ * Open the project's ALS file in the OS default app (Ableton, if associated)
+ * @param {string} folderPath - Path to project folder
+ * @returns {Promise<{success: boolean, alsPath?: string, error?: string}>}
+ */
+async function openCurrentAbletonSet(folderPath) {
+  const alsResult = await findAlsFile(folderPath);
+  if (!alsResult.success) {
+    return { success: false, error: alsResult.error };
+  }
+
+  const alsPath = path.join(folderPath, alsResult.alsPath);
+  const openError = await shell.openPath(alsPath);
+
+  if (openError) {
+    return { success: false, error: openError, alsPath };
+  }
+
+  return { success: true, alsPath };
 }
 
 /**
@@ -235,12 +256,29 @@ function registerIpcHandlers() {
     const restoreResult = await restoreCommit(currentProjectPath, commitHash);
 
     if (restoreResult.success) {
-      dialog.showMessageBox({
-        type: 'info',
-        title: 'Version Restored',
-        message: 'Project files restored successfully!',
-        detail: `Your project files have been restored to version ${commitHash.substring(0, 7)}.\n\nThe restored files are uncommitted. You can:\n- Test the project in Ableton\n- Commit if you want to keep this version\n- Discard to go back to the latest version`
-      });
+      const openSetResult = await openCurrentAbletonSet(currentProjectPath);
+
+      if (openSetResult.success) {
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'Version Restored',
+          message: 'Project files restored and reopened successfully!',
+          detail: `Your project files have been restored to version ${commitHash.substring(0, 7)} and the Live Set was reopened automatically.\n\nThe restored files are uncommitted. You can:\n- Test the project in Ableton\n- Commit if you want to keep this version\n- Discard to go back to the latest version`
+        });
+      } else {
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Version Restored (Reopen Failed)',
+          message: 'Project files were restored, but the Live Set could not be opened automatically.',
+          detail: `Restored to version ${commitHash.substring(0, 7)}.\n\nAutomatic reopen error: ${openSetResult.error}\n\nYou can still open the set manually from Ableton via File > Open Recent Set.`
+        });
+      }
+
+      return {
+        ...restoreResult,
+        reopenedSet: openSetResult.success,
+        reopenError: openSetResult.success ? undefined : openSetResult.error,
+      };
     } else {
       dialog.showErrorBox('Restore Failed', `Failed to restore: ${restoreResult.error}`);
     }
