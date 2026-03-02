@@ -1,6 +1,7 @@
-const { ipcMain, dialog } = require('electron');
+const { ipcMain, dialog, BrowserWindow } = require('electron');
 const path = require('path');
-const fs = require('fs').promises;
+const fsModule = require('fs');
+const fs = fsModule.promises;
 const {
   initializeGitRepository,
   createCommit,
@@ -10,12 +11,75 @@ const {
   discardChanges,
   findAlsFile,
   getFileAtCommit,
-  getHeadCommitHash
+  getHeadCommitHash,
+  getChangedFiles
 } = require('./git-handler');
 const { parseAlsContent } = require('./parser-handler');
 
 // Store the current project path
 let currentProjectPath = null;
+
+// File watcher state
+let fileWatcher = null;
+let debounceTimer = null;
+
+/**
+ * Send changed files update to all renderer windows
+ */
+async function sendChangedFilesUpdate() {
+  if (!currentProjectPath) return;
+
+  const result = await getChangedFiles(currentProjectPath);
+  console.log('Changed files result:', JSON.stringify(result));
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) {
+    win.webContents.send('changed-files-updated', result);
+  }
+}
+
+/**
+ * Start watching the project folder for file changes
+ * @param {string} folderPath - Path to watch
+ */
+function startFileWatcher(folderPath) {
+  stopFileWatcher();
+
+  try {
+    fileWatcher = fsModule.watch(folderPath, { recursive: true }, (eventType, filename) => {
+      // Ignore changes inside .git directory (handle both / and \ separators)
+      if (!filename || filename.startsWith('.git/') || filename.startsWith('.git\\') || filename === '.git') return;
+
+      console.log(`File watcher detected: ${eventType} ${filename}`);
+
+      // Debounce: wait for save operations to finish before checking status
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        console.log('Debounce finished, checking git status...');
+        sendChangedFilesUpdate();
+      }, 1000);
+    });
+
+    fileWatcher.on('error', (err) => {
+      console.error('File watcher error:', err);
+    });
+
+    console.log('File watcher started for:', folderPath);
+  } catch (error) {
+    console.error('Failed to start file watcher:', error);
+  }
+}
+
+/**
+ * Stop the current file watcher
+ */
+function stopFileWatcher() {
+  clearTimeout(debounceTimer);
+  if (fileWatcher) {
+    fileWatcher.close();
+    fileWatcher = null;
+    console.log('File watcher stopped');
+  }
+}
 
 /**
  * Register all IPC handlers for communication between main and renderer processes
@@ -47,6 +111,7 @@ function registerIpcHandlers() {
           if (gitResult.success) {
             // Store the project path for future operations
             currentProjectPath = folderPath;
+            startFileWatcher(folderPath);
             return { success: true, path: folderPath };
           } else {
             return { success: false, error: gitResult.error };
@@ -111,6 +176,15 @@ function registerIpcHandlers() {
       result.headCommit = headResult.hash;
     }
     return result;
+  });
+
+  // Handle getting changed files (git status)
+  ipcMain.handle('get-changed-files', async () => {
+    if (!currentProjectPath) {
+      return { success: true, files: [] };
+    }
+
+    return await getChangedFiles(currentProjectPath);
   });
 
   // Handle restoring to a specific commit

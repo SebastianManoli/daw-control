@@ -252,6 +252,49 @@ async function getFileAtCommit(folderPath, commitHash, filePath) {
 }
 
 /**
+ * Get list of changed files with their status (added, modified, deleted)
+ * Parses `git status --porcelain` output for both staged and unstaged changes
+ * @param {string} folderPath - Path to the git repository
+ * @returns {Promise<{success: boolean, files: Array<{path: string, status: string}>}>}
+ */
+async function getChangedFiles(folderPath) {
+  try {
+    const { stdout } = await execPromise('git status --porcelain', {
+      cwd: folderPath,
+      maxBuffer: 10 * 1024 * 1024
+    });
+
+    console.log('git status --porcelain output:', JSON.stringify(stdout));
+
+    if (!stdout.trim()) {
+      return { success: true, files: [] };
+    }
+
+    const files = stdout.trim().split('\n').map(line => {
+      const x = line[0]; // staging area status
+      const y = line[1]; // working tree status
+      const filePath = line.substring(3);
+
+      let status;
+      if (x === '?' || x === 'A') {
+        status = 'added';
+      } else if (x === 'D' || y === 'D') {
+        status = 'deleted';
+      } else {
+        status = 'modified';
+      }
+
+      return { path: filePath, status };
+    });
+
+    return { success: true, files };
+  } catch (error) {
+    console.error('Error getting changed files:', error);
+    return { success: true, files: [] };
+  }
+}
+
+/**
  * Get the current HEAD commit hash
  * @param {string} folderPath - Path to the git repository
  * @returns {Promise<{success: boolean, hash?: string, error?: string}>}
@@ -275,5 +318,6 @@ module.exports = {
   discardChanges,
   findAlsFile,
   getFileAtCommit,
-  getHeadCommitHash
+  getHeadCommitHash,
+  getChangedFiles
 };

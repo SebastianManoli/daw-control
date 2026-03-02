@@ -10,6 +10,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCommits: () => ipcRenderer.invoke('get-commits'),
   restoreCommit: (commitHash) => ipcRenderer.invoke('restore-commit', commitHash),
 
+  // Changed files
+  getChangedFiles: () => ipcRenderer.invoke('get-changed-files'),
+  onChangedFilesUpdated: (callback) => ipcRenderer.on('changed-files-updated', (_event, data) => callback(data)),
+  offChangedFilesUpdated: () => ipcRenderer.removeAllListeners('changed-files-updated'),
+
   // Parsing
   parseCommit: (commitHash) => ipcRenderer.invoke('parse-commit', commitHash),
 

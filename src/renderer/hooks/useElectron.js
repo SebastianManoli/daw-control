@@ -14,6 +14,9 @@ export function useElectron() {
       getCommits: async () => ({ success: false, commits: [], error: 'Not in Electron' }),
       restoreCommit: async () => ({ success: false, error: 'Not in Electron' }),
       parseCommit: async () => ({ success: false, error: 'Not in Electron' }),
+      getChangedFiles: async () => ({ success: true, files: [] }),
+      onChangedFilesUpdated: () => {},
+      offChangedFilesUpdated: () => {},
       isElectron: false,
     };
   }
@@ -24,6 +27,9 @@ export function useElectron() {
     getCommits: api.getCommits,
     restoreCommit: api.restoreCommit,
     parseCommit: api.parseCommit,
+    getChangedFiles: api.getChangedFiles,
+    onChangedFilesUpdated: api.onChangedFilesUpdated,
+    offChangedFilesUpdated: api.offChangedFilesUpdated,
     isElectron: true,
   };
 }

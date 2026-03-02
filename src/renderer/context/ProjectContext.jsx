@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useElectron } from '../hooks/useElectron';
 
 const ProjectContext = createContext(null);
@@ -11,6 +11,7 @@ export function ProjectProvider({ children }) {
   const [selectedCommit, setSelectedCommit] = useState(null);
   const [headCommit, setHeadCommit] = useState(null);
   const [parsedData, setParsedData] = useState(null);
+  const [changedFiles, setChangedFiles] = useState([]);
 
   const electron = useElectron();
   const isProjectOpen = !!projectPath;
@@ -26,6 +27,27 @@ export function ProjectProvider({ children }) {
     }
     setIsLoading(false);
   }, [electron, isProjectOpen]);
+
+  const loadChangedFiles = useCallback(async () => {
+    if (!isProjectOpen) return;
+    const result = await electron.getChangedFiles();
+    if (result.success) {
+      setChangedFiles(result.files);
+    }
+  }, [electron, isProjectOpen]);
+
+  // Subscribe to file watcher events from the main process
+  useEffect(() => {
+    electron.onChangedFilesUpdated((data) => {
+      if (data.success) {
+        setChangedFiles(data.files);
+      }
+    });
+
+    return () => {
+      electron.offChangedFilesUpdated();
+    };
+  }, [electron]);
 
   const openProject = useCallback(async () => {
     try {
@@ -47,6 +69,13 @@ export function ProjectProvider({ children }) {
           setCommits(commitsResult.commits || []);
           if (commitsResult.headCommit) setHeadCommit(commitsResult.headCommit);
         }
+
+        // Load changed files
+        const changedResult = await electron.getChangedFiles();
+        if (changedResult?.success) {
+          setChangedFiles(changedResult.files);
+        }
+
         setIsLoading(false);
       }
     } catch (error) {
@@ -62,10 +91,11 @@ export function ProjectProvider({ children }) {
     const result = await electron.createVersion(message);
     if (result.success) {
       await loadCommits();
+      await loadChangedFiles();
     }
     setIsLoading(false);
     return result;
-  }, [electron, isProjectOpen, loadCommits]);
+  }, [electron, isProjectOpen, loadCommits, loadChangedFiles]);
 
   const restoreVersion = useCallback(async (commitHash) => {
     if (!isProjectOpen) return { success: false };
@@ -75,10 +105,11 @@ export function ProjectProvider({ children }) {
     if (result.success) {
       await loadCommits();
       setHeadCommit(commitHash);
+      await loadChangedFiles();
     }
     setIsLoading(false);
     return result;
-  }, [electron, isProjectOpen, loadCommits]);
+  }, [electron, isProjectOpen, loadCommits, loadChangedFiles]);
 
   const parseVersion = useCallback(async (commitHash) => {
     if (!isProjectOpen) return { success: false };
@@ -101,6 +132,7 @@ export function ProjectProvider({ children }) {
     selectedCommit,
     headCommit,
     parsedData,
+    changedFiles,
 
     // Actions
     openProject,
