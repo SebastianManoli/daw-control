@@ -147,12 +147,11 @@ def get_device_name(device_element):
 def get_clip_names(track_element):
     """
     Extract names of all clips (Session and Arrangement) in the track.
-    Returns a list of unique clip names found.
+    Returns a list of clip names (including duplicates) for count-based diffing.
     """
     clip_names = []
-    
-    # helper to check name nodes
-    def _extract_name(node):
+
+    def _extract_name(node, index):
         # Try UserName first
         user = node.find(".//Name/UserName")
         if user is not None and user.get('Value'):
@@ -161,24 +160,13 @@ def get_clip_names(track_element):
         eff = node.find(".//Name/EffectiveName")
         if eff is not None and eff.get('Value'):
             return eff.get('Value')
-        return None
+        # Fall back to a positional label so unnamed clips are still tracked
+        return f"Clip {index + 1}"
 
-    # Search for MidiClip and AudioClip elements
-    for clip in track_element.findall(".//MidiClip") + track_element.findall(".//AudioClip"):
-        name = _extract_name(clip)
-        if name:
-            clip_names.append(name)
-            
-    # Return unique names to avoid clutter if loop is repeated
-    # Preserve order
-    seen = set()
-    unique = []
-    for c in clip_names:
-        if c not in seen:
-            unique.append(c)
-            seen.add(c)
-            
-    return unique
+    for i, clip in enumerate(track_element.findall(".//MidiClip") + track_element.findall(".//AudioClip")):
+        clip_names.append(_extract_name(clip, i))
+
+    return clip_names
 
 def extract_master_track_info(tree: ET.ElementTree):
     # Check for MainTrack (Live 12+) or MasterTrack (older versions)
