@@ -795,14 +795,22 @@ body {
   display: flex;
   gap: 8px;
   font-size: 0.74rem;
-  color: #838383;
 }
+
+.diff-summary-added   { color: #899b31; }
+.diff-summary-removed { color: #b53637; }
+.diff-summary-modified { color: #fea741; }
 
 .diff-section {
   border: 1px solid #333;
+  border-left-width: 3px;
   border-radius: 4px;
   background: #1e1e1e;
 }
+
+.diff-section--added  { border-left-color: #899b31; }
+.diff-section--removed { border-left-color: #b53637; }
+.diff-section--modified { border-left-color: #fea741; }
 
 .diff-section-title {
   padding: 8px 10px;
@@ -811,6 +819,10 @@ body {
   font-weight: 600;
   color: #d9d9d9;
 }
+
+.diff-section--added   .diff-section-title { color: #899b31; }
+.diff-section--removed .diff-section-title { color: #b53637; }
+.diff-section--modified .diff-section-title { color: #fea741; }
 
 .diff-section-list {
   display: flex;
@@ -841,12 +853,18 @@ body {
 .diff-item-values {
   margin-top: 3px;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   font-size: 0.74rem;
 }
 
 .diff-before {
   color: #b53637;
+}
+
+.diff-arrow {
+  color: #555;
+  font-size: 0.7rem;
 }
 
 .diff-after {

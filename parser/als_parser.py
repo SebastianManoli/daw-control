@@ -233,6 +233,7 @@ def extract_track_info(tree: ET.ElementTree):
             clips = get_clip_names(track)
 
             track_data = {
+                'id': track.get('Id'),
                 'name': track_name_val if track_name_val else 'Untitled',
                 'type': track_type.split('/')[-1],  # Get track type name
                 'color': track.find(".//Color").get('Value') if track.find(".//Color") is not None else None,

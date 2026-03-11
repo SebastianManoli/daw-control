@@ -69,15 +69,15 @@ export function DiffViewer() {
           <div className="diff-file-name">{workingFileDiff.filePath}</div>
           {summary && (
             <div className="diff-summary">
-              <span>+{summary.added}</span>
-              <span>-{summary.removed}</span>
-              <span>~{summary.modified}</span>
+              <span className="diff-summary-added">+{summary.added}</span>
+              <span className="diff-summary-removed">-{summary.removed}</span>
+              <span className="diff-summary-modified">~{summary.modified}</span>
             </div>
           )}
         </div>
 
         {sections.map((section) => (
-          <div key={section.kind} className="diff-section">
+          <div key={section.kind} className={`diff-section diff-section--${section.kind}`}>
             <div className="diff-section-title">{section.title}</div>
             <div className="diff-section-list">
               {section.items.map((item, index) => (
@@ -87,6 +87,7 @@ export function DiffViewer() {
                   {(item.before || item.after) && (
                     <div className="diff-item-values">
                       {item.before && <span className="diff-before">{item.before}</span>}
+                      {item.before && item.after && <span className="diff-arrow">→</span>}
                       {item.after && <span className="diff-after">{item.after}</span>}
                     </div>
                   )}

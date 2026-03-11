@@ -42,12 +42,18 @@ function buildTrackMap(projectData) {
   const seen = {};
 
   allTracks.forEach((track) => {
-    const type = track?.type || 'Track';
-    const name = track?.name || 'Untitled';
-    const baseKey = `${type}::${name}`;
-    seen[baseKey] = (seen[baseKey] || 0) + 1;
-    const key = `${baseKey}#${seen[baseKey]}`;
-    map.set(key, track);
+    const id = track?.id;
+    if (id != null) {
+      // Use stable Ableton track ID as key
+      map.set(String(id), track);
+    } else {
+      // Fallback for tracks without IDs
+      const type = track?.type || 'Track';
+      const name = track?.name || 'Untitled';
+      const baseKey = `${type}::${name}`;
+      seen[baseKey] = (seen[baseKey] || 0) + 1;
+      map.set(`${baseKey}#${seen[baseKey]}`, track);
+    }
   });
 
   return map;
@@ -122,6 +128,15 @@ function buildAlsDiff(beforeData, afterData) {
   for (const [key, beforeTrack] of beforeTracks.entries()) {
     const afterTrack = afterTracks.get(key);
     if (!afterTrack) continue;
+
+    if (beforeTrack?.name && afterTrack?.name && beforeTrack.name !== afterTrack.name) {
+      addItem(modifiedSection, {
+        label: formatTrack(afterTrack),
+        detail: 'Renamed',
+        before: beforeTrack.name,
+        after: afterTrack.name,
+      });
+    }
 
     if (beforeTrack?.color && afterTrack?.color && beforeTrack.color !== afterTrack.color) {
       addItem(modifiedSection, {
