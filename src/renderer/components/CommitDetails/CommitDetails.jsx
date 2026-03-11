@@ -58,7 +58,7 @@ export function CommitDetails() {
         ...(parsedData.tracks?.midi_tracks || []),
         ...(parsedData.tracks?.audio_tracks || []),
         ...(parsedData.tracks?.return_tracks || []),
-      ]
+      ].filter((t) => t.clips?.length > 0)
     : [];
 
   const masterDevices = parsedData?.tracks?.master?.devices || [];
