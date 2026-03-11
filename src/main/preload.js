@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Changed files
   getChangedFiles: () => ipcRenderer.invoke('get-changed-files'),
+  getWorkingFileDiff: (filePath, fileStatus) => ipcRenderer.invoke('get-working-file-diff', filePath, fileStatus),
   onChangedFilesUpdated: (callback) => ipcRenderer.on('changed-files-updated', (_event, data) => callback(data)),
   offChangedFilesUpdated: () => ipcRenderer.removeAllListeners('changed-files-updated'),
 

@@ -254,6 +254,12 @@ body {
   background: #252525;
 }
 
+.changed-file-item.selected {
+  background: #2a2a2a;
+  border-left: 2px solid #fea741;
+  padding-left: 12px;
+}
+
 .file-checkbox input {
   accent-color: #fea741;
   cursor: pointer;
@@ -758,12 +764,101 @@ body {
 .diff-viewer {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   background: #1a1a1a;
+  min-height: 0;
+}
+
+.diff-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.diff-file-name {
+  font-size: 0.84rem;
+  color: #d9d9d9;
+  font-weight: 600;
+}
+
+.diff-summary {
+  display: flex;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: #838383;
+}
+
+.diff-section {
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #1e1e1e;
+}
+
+.diff-section-title {
+  padding: 8px 10px;
+  border-bottom: 1px solid #333;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #d9d9d9;
+}
+
+.diff-section-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.diff-item:last-child {
+  border-bottom: none;
+}
+
+.diff-item-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #d9d9d9;
+}
+
+.diff-item-detail {
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: #b3b3b3;
+}
+
+.diff-item-values {
+  margin-top: 3px;
+  display: flex;
+  gap: 8px;
+  font-size: 0.74rem;
+}
+
+.diff-before {
+  color: #b53637;
+}
+
+.diff-after {
+  color: #899b31;
 }
 
 .diff-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   color: #838383;
 }

@@ -1,4 +1,4 @@
-export function ChangedFileListItem({ file }) {
+export function ChangedFileListItem({ file, isSelected, onClick }) {
   const statusIcons = {
     added: '+',
     modified: '~',
@@ -12,7 +12,10 @@ export function ChangedFileListItem({ file }) {
   };
 
   return (
-    <div className="changed-file-item">
+    <div
+      className={`changed-file-item ${isSelected ? 'selected' : ''}`}
+      onClick={() => onClick?.(file)}
+    >
       <label className="file-checkbox">
         <input type="checkbox" defaultChecked />
       </label>

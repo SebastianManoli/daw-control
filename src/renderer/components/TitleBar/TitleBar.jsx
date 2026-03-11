@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import appIcon from '../../styles/Asset 8@4x.png';
+import appIcon from '../../styles/d-c.svg';
 
 export function TitleBar() {
   const [menuLabels, setMenuLabels] = useState([]);

@@ -12,9 +12,53 @@ export function ProjectProvider({ children }) {
   const [headCommit, setHeadCommit] = useState(null);
   const [parsedData, setParsedData] = useState(null);
   const [changedFiles, setChangedFiles] = useState([]);
+  const [selectedChangedFilePath, setSelectedChangedFilePath] = useState(null);
+  const [workingFileDiff, setWorkingFileDiff] = useState(null);
+  const [workingFileDiffLoading, setWorkingFileDiffLoading] = useState(false);
+  const [workingFileDiffError, setWorkingFileDiffError] = useState(null);
 
   const electron = useElectron();
   const isProjectOpen = !!projectPath;
+
+  const clearSelectedChangedFile = useCallback(() => {
+    setSelectedChangedFilePath(null);
+    setWorkingFileDiff(null);
+    setWorkingFileDiffError(null);
+    setWorkingFileDiffLoading(false);
+  }, []);
+
+  const loadWorkingFileDiff = useCallback(async (filePath, fileStatus) => {
+    if (!isProjectOpen || !filePath) {
+      return { success: false, error: 'No project or file selected' };
+    }
+
+    setWorkingFileDiffLoading(true);
+    setWorkingFileDiffError(null);
+
+    const result = await electron.getWorkingFileDiff(filePath, fileStatus);
+
+    if (result.success) {
+      setWorkingFileDiff(result);
+    } else {
+      setWorkingFileDiff(null);
+      setWorkingFileDiffError(result.error || 'Failed to load file diff');
+    }
+
+    setWorkingFileDiffLoading(false);
+    return result;
+  }, [electron, isProjectOpen]);
+
+  const syncSelectedChangedFile = useCallback(async (files) => {
+    if (!selectedChangedFilePath) return;
+
+    const selectedFile = files.find((file) => file.path === selectedChangedFilePath);
+    if (!selectedFile) {
+      clearSelectedChangedFile();
+      return;
+    }
+
+    await loadWorkingFileDiff(selectedFile.path, selectedFile.status);
+  }, [clearSelectedChangedFile, loadWorkingFileDiff, selectedChangedFilePath]);
 
   const loadCommits = useCallback(async () => {
     if (!isProjectOpen) return;
@@ -33,21 +77,23 @@ export function ProjectProvider({ children }) {
     const result = await electron.getChangedFiles();
     if (result.success) {
       setChangedFiles(result.files);
+      await syncSelectedChangedFile(result.files);
     }
-  }, [electron, isProjectOpen]);
+  }, [electron, isProjectOpen, syncSelectedChangedFile]);
 
   // Subscribe to file watcher events from the main process
   useEffect(() => {
-    electron.onChangedFilesUpdated((data) => {
+    electron.onChangedFilesUpdated(async (data) => {
       if (data.success) {
         setChangedFiles(data.files);
+        await syncSelectedChangedFile(data.files);
       }
     });
 
     return () => {
       electron.offChangedFilesUpdated();
     };
-  }, [electron]);
+  }, [electron, syncSelectedChangedFile]);
 
   const openProject = useCallback(async () => {
     try {
@@ -59,6 +105,7 @@ export function ProjectProvider({ children }) {
         const folderName = result.path.split(/[\\/]/).pop();
         setProjectName(folderName);
         setProjectPath(result.path);
+        clearSelectedChangedFile();
 
         // Load commits after opening project
         setIsLoading(true);
@@ -82,7 +129,17 @@ export function ProjectProvider({ children }) {
       console.error('Error opening project:', error);
       setIsLoading(false);
     }
-  }, [electron]);
+  }, [clearSelectedChangedFile, electron]);
+
+  const selectChangedFile = useCallback(async (file) => {
+    if (!file?.path) {
+      clearSelectedChangedFile();
+      return { success: false, error: 'Invalid file selection' };
+    }
+
+    setSelectedChangedFilePath(file.path);
+    return await loadWorkingFileDiff(file.path, file.status);
+  }, [clearSelectedChangedFile, loadWorkingFileDiff]);
 
   const createVersion = useCallback(async (message) => {
     if (!isProjectOpen || !message.trim()) return { success: false };
@@ -133,13 +190,19 @@ export function ProjectProvider({ children }) {
     headCommit,
     parsedData,
     changedFiles,
+    selectedChangedFilePath,
+    workingFileDiff,
+    workingFileDiffLoading,
+    workingFileDiffError,
 
     // Actions
     openProject,
     createVersion,
     restoreVersion,
     parseVersion,
+    selectChangedFile,
     loadCommits,
+    loadChangedFiles,
     setSelectedCommit,
   };
 

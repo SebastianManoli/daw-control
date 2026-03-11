@@ -14,7 +14,8 @@ const {
   getHeadCommitHash,
   getChangedFiles
 } = require('./git-handler');
-const { parseAlsContent } = require('./parser-handler');
+const { parseAlsContent, parseAlsFile } = require('./parser-handler');
+const { buildAlsDiff } = require('./als-diff');
 
 // Store the current project path
 let currentProjectPath = null;
@@ -206,6 +207,70 @@ function registerIpcHandlers() {
     }
 
     return await getChangedFiles(currentProjectPath);
+  });
+
+  // Handle working tree semantic diff for a changed file (HEAD vs current file)
+  ipcMain.handle('get-working-file-diff', async (_event, filePath, fileStatus) => {
+    if (!currentProjectPath) {
+      return { success: false, error: 'No project opened' };
+    }
+
+    if (!filePath || !filePath.trim()) {
+      return { success: false, error: 'Invalid file path' };
+    }
+
+    const isAlsFile = path.extname(filePath).toLowerCase() === '.als';
+    if (!isAlsFile) {
+      return {
+        success: true,
+        filePath,
+        fileStatus,
+        isAlsFile: false,
+        diff: null,
+      };
+    }
+
+    try {
+      let headParsedData = null;
+      let workingParsedData = null;
+
+      if (fileStatus !== 'added') {
+        const headFileResult = await getFileAtCommit(currentProjectPath, 'HEAD', filePath);
+        if (!headFileResult.success) {
+          return { success: false, error: `Failed to load HEAD version: ${headFileResult.error}` };
+        }
+
+        const headParseResult = await parseAlsContent(headFileResult.content, path.basename(filePath));
+        if (!headParseResult.success) {
+          return { success: false, error: `Failed to parse HEAD ALS: ${headParseResult.error}` };
+        }
+
+        headParsedData = headParseResult.data;
+      }
+
+      if (fileStatus !== 'deleted') {
+        const absolutePath = path.join(currentProjectPath, filePath);
+        const workingParseResult = await parseAlsFile(absolutePath);
+        if (!workingParseResult.success) {
+          return { success: false, error: `Failed to parse working ALS: ${workingParseResult.error}` };
+        }
+
+        workingParsedData = workingParseResult.data;
+      }
+
+      const diff = buildAlsDiff(headParsedData, workingParsedData);
+
+      return {
+        success: true,
+        filePath,
+        fileStatus,
+        isAlsFile: true,
+        diff,
+      };
+    } catch (error) {
+      console.error('Error getting working file diff:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   // Handle restoring to a specific commit

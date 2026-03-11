@@ -16,7 +16,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: "src/renderer/styles/Asset 8@4x.png"
+    icon: "src/renderer/styles/d-c@4x.png"
   });
 
   // Hide the default menu bar (we render our own in the renderer)

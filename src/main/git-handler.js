@@ -270,7 +270,10 @@ async function getChangedFiles(folderPath) {
       return { success: true, files: [] };
     }
 
-    const files = stdout.trim().split('\n').map(line => {
+    const files = stdout
+      .split(/\r?\n/)
+      .filter(line => line.length >= 4)
+      .map(line => {
       const x = line[0]; // staging area status
       const y = line[1]; // working tree status
       const filePath = line.substring(3);
@@ -285,7 +288,7 @@ async function getChangedFiles(folderPath) {
       }
 
       return { path: filePath, status };
-    });
+      });
 
     return { success: true, files };
   } catch (error) {
