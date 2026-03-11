@@ -4,7 +4,10 @@
   "description": "version control system built for ableton live",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron .",
+    "dev": "vite",
+    "build": "vite build",
+    "electron": "wait-on http://localhost:5173 && electron .",
+    "start": "concurrently -k \"npm run dev\" \"npm run electron\"",
     "test": "npm test"
   },
   "repository": {
@@ -18,6 +21,14 @@
   },
   "homepage": "https://github.com/SebastianManoli/daw-control#readme",
   "devDependencies": {
-    "electron": "^39.2.1"
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.1",
+    "vite": "^5.4.21",
+    "wait-on": "^9.0.3"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }

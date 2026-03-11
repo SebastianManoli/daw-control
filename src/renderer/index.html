@@ -1,26 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://use.typekit.net/ahy1wdd.css">
-  <link rel="stylesheet" href="styles/main.css">
   <title>DAW-Control</title>
 </head>
 <body>
-  <h1>DAW-Control</h1>
-  <div id="project-name"></div>
-  <div class="core">
-    <button id="selectFolderBtn">Initialise Project</button>
-    <button id="createVersionBtn">Create Version</button>
-    <input type="text" id="commit-message" required placeholder="version description">
-  </div>
-
-  <div id="commits-container">
-    <h2>Version History</h2>
-    <div id="commits-list"></div>
-  </div>
-
-  <script src="renderer.js"></script>
+  <div id="root"></div>
+  <script type="module" src="/main.jsx"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
-const { app, Menu, dialog, shell } = require('electron');
+const { app, dialog, shell } = require('electron');
 
-function createMenu() {
-  const template = [
+function getMenuTemplate() {
+  return [
     {
       label: 'File',
       submenu: [
@@ -58,15 +58,6 @@ function createMenu() {
       ]
     },
     {
-      label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'zoom' },
-        { type: 'separator' },
-        { role: 'close' }
-      ]
-    },
-    {
       label: 'Help',
       submenu: [
         {
@@ -90,9 +81,6 @@ function createMenu() {
       ]
     }
   ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
 }
 
-module.exports = { createMenu };
+module.exports = { getMenuTemplate };

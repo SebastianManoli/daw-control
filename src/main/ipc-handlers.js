@@ -1,6 +1,7 @@
-const { ipcMain, dialog } = require('electron');
+const { ipcMain, dialog, BrowserWindow, shell } = require('electron');
 const path = require('path');
-const fs = require('fs').promises;
+const fsModule = require('fs');
+const fs = fsModule.promises;
 const {
   initializeGitRepository,
   createCommit,
@@ -9,12 +10,98 @@ const {
   checkWorkingDirectoryStatus,
   discardChanges,
   findAlsFile,
-  getFileAtCommit
+  getFileAtCommit,
+  getHeadCommitHash,
+  getChangedFiles
 } = require('./git-handler');
-const { parseAlsContent } = require('./parser-handler');
+const { parseAlsContent, parseAlsFile } = require('./parser-handler');
+const { buildAlsDiff } = require('./als-diff');
 
 // Store the current project path
 let currentProjectPath = null;
+
+// File watcher state
+let fileWatcher = null;
+let debounceTimer = null;
+
+/**
+ * Send changed files update to all renderer windows
+ */
+async function sendChangedFilesUpdate() {
+  if (!currentProjectPath) return;
+
+  const result = await getChangedFiles(currentProjectPath);
+  console.log('Changed files result:', JSON.stringify(result));
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) {
+    win.webContents.send('changed-files-updated', result);
+  }
+}
+
+/**
+ * Start watching the project folder for file changes
+ * @param {string} folderPath - Path to watch
+ */
+function startFileWatcher(folderPath) {
+  stopFileWatcher();
+
+  try {
+    fileWatcher = fsModule.watch(folderPath, { recursive: true }, (eventType, filename) => {
+      // Ignore changes inside .git directory (handle both / and \ separators)
+      if (!filename || filename.startsWith('.git/') || filename.startsWith('.git\\') || filename === '.git') return;
+
+      console.log(`File watcher detected: ${eventType} ${filename}`);
+
+      // Debounce: wait for save operations to finish before checking status
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        console.log('Debounce finished, checking git status...');
+        sendChangedFilesUpdate();
+      }, 1000);
+    });
+
+    fileWatcher.on('error', (err) => {
+      console.error('File watcher error:', err);
+    });
+
+    console.log('File watcher started for:', folderPath);
+  } catch (error) {
+    console.error('Failed to start file watcher:', error);
+  }
+}
+
+/**
+ * Stop the current file watcher
+ */
+function stopFileWatcher() {
+  clearTimeout(debounceTimer);
+  if (fileWatcher) {
+    fileWatcher.close();
+    fileWatcher = null;
+    console.log('File watcher stopped');
+  }
+}
+
+/**
+ * Open the project's ALS file in the OS default app (Ableton, if associated)
+ * @param {string} folderPath - Path to project folder
+ * @returns {Promise<{success: boolean, alsPath?: string, error?: string}>}
+ */
+async function openCurrentAbletonSet(folderPath) {
+  const alsResult = await findAlsFile(folderPath);
+  if (!alsResult.success) {
+    return { success: false, error: alsResult.error };
+  }
+
+  const alsPath = path.join(folderPath, alsResult.alsPath);
+  const openError = await shell.openPath(alsPath);
+
+  if (openError) {
+    return { success: false, error: openError, alsPath };
+  }
+
+  return { success: true, alsPath };
+}
 
 /**
  * Register all IPC handlers for communication between main and renderer processes
@@ -46,6 +133,7 @@ function registerIpcHandlers() {
           if (gitResult.success) {
             // Store the project path for future operations
             currentProjectPath = folderPath;
+            startFileWatcher(folderPath);
             return { success: true, path: folderPath };
           } else {
             return { success: false, error: gitResult.error };
@@ -104,7 +192,85 @@ function registerIpcHandlers() {
       return { success: false, error: 'No project opened', commits: [] };
     }
 
-    return await getCommitHistory(currentProjectPath);
+    const result = await getCommitHistory(currentProjectPath);
+    const headResult = await getHeadCommitHash(currentProjectPath);
+    if (headResult.success) {
+      result.headCommit = headResult.hash;
+    }
+    return result;
+  });
+
+  // Handle getting changed files (git status)
+  ipcMain.handle('get-changed-files', async () => {
+    if (!currentProjectPath) {
+      return { success: true, files: [] };
+    }
+
+    return await getChangedFiles(currentProjectPath);
+  });
+
+  // Handle working tree semantic diff for a changed file (HEAD vs current file)
+  ipcMain.handle('get-working-file-diff', async (_event, filePath, fileStatus) => {
+    if (!currentProjectPath) {
+      return { success: false, error: 'No project opened' };
+    }
+
+    if (!filePath || !filePath.trim()) {
+      return { success: false, error: 'Invalid file path' };
+    }
+
+    const isAlsFile = path.extname(filePath).toLowerCase() === '.als';
+    if (!isAlsFile) {
+      return {
+        success: true,
+        filePath,
+        fileStatus,
+        isAlsFile: false,
+        diff: null,
+      };
+    }
+
+    try {
+      let headParsedData = null;
+      let workingParsedData = null;
+
+      if (fileStatus !== 'added') {
+        const headFileResult = await getFileAtCommit(currentProjectPath, 'HEAD', filePath);
+        if (!headFileResult.success) {
+          return { success: false, error: `Failed to load HEAD version: ${headFileResult.error}` };
+        }
+
+        const headParseResult = await parseAlsContent(headFileResult.content, path.basename(filePath));
+        if (!headParseResult.success) {
+          return { success: false, error: `Failed to parse HEAD ALS: ${headParseResult.error}` };
+        }
+
+        headParsedData = headParseResult.data;
+      }
+
+      if (fileStatus !== 'deleted') {
+        const absolutePath = path.join(currentProjectPath, filePath);
+        const workingParseResult = await parseAlsFile(absolutePath);
+        if (!workingParseResult.success) {
+          return { success: false, error: `Failed to parse working ALS: ${workingParseResult.error}` };
+        }
+
+        workingParsedData = workingParseResult.data;
+      }
+
+      const diff = buildAlsDiff(headParsedData, workingParsedData);
+
+      return {
+        success: true,
+        filePath,
+        fileStatus,
+        isAlsFile: true,
+        diff,
+      };
+    } catch (error) {
+      console.error('Error getting working file diff:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   // Handle restoring to a specific commit
@@ -155,12 +321,29 @@ function registerIpcHandlers() {
     const restoreResult = await restoreCommit(currentProjectPath, commitHash);
 
     if (restoreResult.success) {
-      dialog.showMessageBox({
-        type: 'info',
-        title: 'Version Restored',
-        message: 'Project files restored successfully!',
-        detail: `Your project files have been restored to version ${commitHash.substring(0, 7)}.\n\nThe restored files are uncommitted. You can:\n- Test the project in Ableton\n- Commit if you want to keep this version\n- Discard to go back to the latest version`
-      });
+      const openSetResult = await openCurrentAbletonSet(currentProjectPath);
+
+      if (openSetResult.success) {
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'Version Restored',
+          message: 'Project files restored and reopened successfully!',
+          detail: `Your project files have been restored to version ${commitHash.substring(0, 7)} and the Live Set was reopened automatically.\n\nThe restored files are uncommitted. You can:\n- Test the project in Ableton\n- Commit if you want to keep this version\n- Discard to go back to the latest version`
+        });
+      } else {
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Version Restored (Reopen Failed)',
+          message: 'Project files were restored, but the Live Set could not be opened automatically.',
+          detail: `Restored to version ${commitHash.substring(0, 7)}.\n\nAutomatic reopen error: ${openSetResult.error}\n\nYou can still open the set manually from Ableton via File > Open Recent Set.`
+        });
+      }
+
+      return {
+        ...restoreResult,
+        reopenedSet: openSetResult.success,
+        reopenError: openSetResult.success ? undefined : openSetResult.error,
+      };
     } else {
       dialog.showErrorBox('Restore Failed', `Failed to restore: ${restoreResult.error}`);
     }
