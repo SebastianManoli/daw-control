@@ -850,6 +850,27 @@ body {
   color: #b3b3b3;
 }
 
+.diff-subitem-list {
+  margin-top: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 10px;
+  border-left: 2px solid #333;
+}
+
+.diff-subitem {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.diff-subitem-detail {
+  font-size: 0.76rem;
+  color: #b3b3b3;
+}
+
 .diff-item-values {
   margin-top: 3px;
   display: flex;

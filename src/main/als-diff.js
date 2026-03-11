@@ -94,6 +94,7 @@ function buildAlsDiff(beforeData, afterData) {
   const removedSection = createSection('removed', 'Removed');
   const modifiedSection = createSection('modified', 'Modified');
 
+  // Non-track flat items go directly into modifiedSection
   const beforeTempo = beforeData?.tempo;
   const afterTempo = afterData?.tempo;
   if (typeof beforeTempo === 'number' && typeof afterTempo === 'number' && beforeTempo !== afterTempo) {
@@ -109,114 +110,74 @@ function buildAlsDiff(beforeData, afterData) {
 
   for (const [key, track] of afterTracks.entries()) {
     if (!beforeTracks.has(key)) {
-      addItem(addedSection, {
-        label: 'Track',
-        detail: formatTrack(track),
-      });
+      addItem(addedSection, { label: 'Track', detail: formatTrack(track) });
     }
   }
 
   for (const [key, track] of beforeTracks.entries()) {
     if (!afterTracks.has(key)) {
-      addItem(removedSection, {
-        label: 'Track',
-        detail: formatTrack(track),
-      });
+      addItem(removedSection, { label: 'Track', detail: formatTrack(track) });
     }
+  }
+
+  // Accumulate per-track changes into a grouped map: key -> { label, subItems[] }
+  const trackChanges = new Map();
+
+  function addTrackChange(key, label, subItem) {
+    if (!trackChanges.has(key)) {
+      trackChanges.set(key, { label, subItems: [] });
+    }
+    trackChanges.get(key).subItems.push(subItem);
   }
 
   for (const [key, beforeTrack] of beforeTracks.entries()) {
     const afterTrack = afterTracks.get(key);
     if (!afterTrack) continue;
 
+    const label = formatTrack(afterTrack);
+
     if (beforeTrack?.name && afterTrack?.name && beforeTrack.name !== afterTrack.name) {
-      addItem(modifiedSection, {
-        label: formatTrack(afterTrack),
-        detail: 'Renamed',
-        before: beforeTrack.name,
-        after: afterTrack.name,
-      });
+      addTrackChange(key, label, { detail: 'Renamed', before: beforeTrack.name, after: afterTrack.name });
     }
 
     if (beforeTrack?.color && afterTrack?.color && beforeTrack.color !== afterTrack.color) {
-      addItem(modifiedSection, {
-        label: formatTrack(afterTrack),
-        detail: 'Color changed',
-      });
+      addTrackChange(key, label, { detail: 'Color changed' });
     }
 
     const beforeDevices = toArray(beforeTrack?.devices).map(deviceName);
     const afterDevices = toArray(afterTrack?.devices).map(deviceName);
     const devicesDiff = diffValueLists(beforeDevices, afterDevices);
 
-    devicesDiff.added.forEach((name) => {
-      addItem(modifiedSection, {
-        label: formatTrack(afterTrack),
-        detail: `Device added: ${name}`,
-      });
-    });
-
-    devicesDiff.removed.forEach((name) => {
-      addItem(modifiedSection, {
-        label: formatTrack(afterTrack),
-        detail: `Device removed: ${name}`,
-      });
-    });
+    devicesDiff.added.forEach((name) => addTrackChange(key, label, { detail: `Device added: ${name}` }));
+    devicesDiff.removed.forEach((name) => addTrackChange(key, label, { detail: `Device removed: ${name}` }));
 
     const beforeClips = toArray(beforeTrack?.clips);
     const afterClips = toArray(afterTrack?.clips);
     const clipsDiff = diffValueLists(beforeClips, afterClips);
 
-    clipsDiff.added.forEach((clipName) => {
-      addItem(modifiedSection, {
-        label: formatTrack(afterTrack),
-        detail: `Clip added: ${clipName}`,
-      });
-    });
-
-    clipsDiff.removed.forEach((clipName) => {
-      addItem(modifiedSection, {
-        label: formatTrack(afterTrack),
-        detail: `Clip removed: ${clipName}`,
-      });
-    });
+    clipsDiff.added.forEach((clipName) => addTrackChange(key, label, { detail: `Clip added: ${clipName}` }));
+    clipsDiff.removed.forEach((clipName) => addTrackChange(key, label, { detail: `Clip removed: ${clipName}` }));
   }
 
+  // Master track — also grouped
   const beforeMasterDevices = toArray(beforeData?.tracks?.master?.devices).map(deviceName);
   const afterMasterDevices = toArray(afterData?.tracks?.master?.devices).map(deviceName);
   const masterDiff = diffValueLists(beforeMasterDevices, afterMasterDevices);
 
-  masterDiff.added.forEach((name) => {
-    addItem(modifiedSection, {
-      label: 'Master',
-      detail: `Device added: ${name}`,
-    });
-  });
+  masterDiff.added.forEach((name) => addTrackChange('__master__', 'Master', { detail: `Device added: ${name}` }));
+  masterDiff.removed.forEach((name) => addTrackChange('__master__', 'Master', { detail: `Device removed: ${name}` }));
 
-  masterDiff.removed.forEach((name) => {
-    addItem(modifiedSection, {
-      label: 'Master',
-      detail: `Device removed: ${name}`,
-    });
-  });
+  // Flush grouped track changes into modifiedSection
+  for (const group of trackChanges.values()) {
+    addItem(modifiedSection, group);
+  }
 
   const beforePlugins = toArray(beforeData?.third_party_vsts).map(pluginName);
   const afterPlugins = toArray(afterData?.third_party_vsts).map(pluginName);
   const pluginsDiff = diffValueLists(beforePlugins, afterPlugins);
 
-  pluginsDiff.added.forEach((plugin) => {
-    addItem(addedSection, {
-      label: 'Plugin',
-      detail: plugin,
-    });
-  });
-
-  pluginsDiff.removed.forEach((plugin) => {
-    addItem(removedSection, {
-      label: 'Plugin',
-      detail: plugin,
-    });
-  });
+  pluginsDiff.added.forEach((plugin) => addItem(addedSection, { label: 'Plugin', detail: plugin }));
+  pluginsDiff.removed.forEach((plugin) => addItem(removedSection, { label: 'Plugin', detail: plugin }));
 
   const sections = [addedSection, removedSection, modifiedSection].filter((section) => section.items.length > 0);
 

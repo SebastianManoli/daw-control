@@ -81,17 +81,37 @@ export function DiffViewer() {
             <div className="diff-section-title">{section.title}</div>
             <div className="diff-section-list">
               {section.items.map((item, index) => (
-                <div key={`${section.kind}-${index}`} className="diff-item">
-                  <div className="diff-item-label">{item.label}</div>
-                  {item.detail && <div className="diff-item-detail">{item.detail}</div>}
-                  {(item.before || item.after) && (
-                    <div className="diff-item-values">
-                      {item.before && <span className="diff-before">{item.before}</span>}
-                      {item.before && item.after && <span className="diff-arrow">→</span>}
-                      {item.after && <span className="diff-after">{item.after}</span>}
+                item.subItems ? (
+                  <div key={`${section.kind}-${index}`} className="diff-item diff-item--group">
+                    <div className="diff-item-label">{item.label}</div>
+                    <div className="diff-subitem-list">
+                      {item.subItems.map((sub, subIndex) => (
+                        <div key={subIndex} className="diff-subitem">
+                          {sub.detail && <span className="diff-subitem-detail">{sub.detail}</span>}
+                          {(sub.before || sub.after) && (
+                            <div className="diff-item-values">
+                              {sub.before && <span className="diff-before">{sub.before}</span>}
+                              {sub.before && sub.after && <span className="diff-arrow">→</span>}
+                              {sub.after && <span className="diff-after">{sub.after}</span>}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div key={`${section.kind}-${index}`} className="diff-item">
+                    <div className="diff-item-label">{item.label}</div>
+                    {item.detail && <div className="diff-item-detail">{item.detail}</div>}
+                    {(item.before || item.after) && (
+                      <div className="diff-item-values">
+                        {item.before && <span className="diff-before">{item.before}</span>}
+                        {item.before && item.after && <span className="diff-arrow">→</span>}
+                        {item.after && <span className="diff-after">{item.after}</span>}
+                      </div>
+                    )}
+                  </div>
+                )
               ))}
             </div>
           </div>
