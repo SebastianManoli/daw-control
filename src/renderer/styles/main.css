@@ -650,51 +650,57 @@ body {
 }
 
 .track-row {
-  padding: 8px 10px;
-  background: #222;
   border-radius: 4px;
+  overflow: hidden;
+  background: #222;
 }
 
-.track-row-header {
+.track-row-main {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  min-height: 74px;
+}
+
+.track-row-content {
   display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.track-color-dot {
-  width: 10px;
-  height: 10px;
-  min-width: 10px;
-  border-radius: 50%;
-}
-
-.track-name {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #ddd;
-  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
   min-width: 0;
+}
+
+.track-label-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-left: 1px solid rgba(0, 0, 0, 0.45);
+}
+
+.track-label-name {
+  font-size: 0.82rem;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.track-type-badge {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #838383;
-  background: #2a2a2a;
-  padding: 1px 6px;
-  border-radius: 3px;
+.track-label-type {
+  font-size: 0.62rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
 }
 
 .track-devices {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 6px;
+  padding: 0;
 }
 
 .device-tag {
@@ -717,16 +723,27 @@ body {
 .track-clips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 6px;
+  padding: 0;
 }
 
-.clip-tag {
-  font-size: 0.68rem;
-  padding: 1px 6px;
-  background: #2a2a2a;
-  color: #aaa;
-  border-radius: 3px;
+.track-clip-block {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  max-width: 220px;
+}
+
+.track-clip-name {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Plugin list */

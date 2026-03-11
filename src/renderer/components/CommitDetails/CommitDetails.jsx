@@ -1,4 +1,5 @@
 import { useProject } from '../../context/ProjectContext';
+import { abletonColor, textOnColor } from '../../utils/abletonColors';
 
 function DeviceTag({ device }) {
   const typeClass = device.type === 'native' ? 'device-native' : 'device-plugin';
@@ -9,31 +10,46 @@ function DeviceTag({ device }) {
   );
 }
 
+const TRACK_TYPE_LABEL = {
+  MidiTrack: 'MIDI',
+  AudioTrack: 'Audio',
+  ReturnTrack: 'Return',
+};
+
 function TrackRow({ track }) {
+  const typeLabel = TRACK_TYPE_LABEL[track.type] ?? 'Track';
+  const color = abletonColor(track.color);
+  const textStyle = textOnColor(color);
+  const textColor = textStyle === 'dark' ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.88)';
+  const subTextColor = textStyle === 'dark' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)';
+
   return (
     <div className="track-row">
-      <div className="track-row-header">
-        <span
-          className="track-color-dot"
-          style={{ background: track.color || '#555' }}
-        />
-        <span className="track-name">{track.name}</span>
-        <span className="track-type-badge">{track.type === 'MidiTrack' ? 'MIDI' : track.type === 'AudioTrack' ? 'Audio' : 'Return'}</span>
+      <div className="track-row-main">
+        <div className="track-row-content">
+          {track.devices?.length > 0 && (
+            <div className="track-devices">
+              {track.devices.map((d, i) => (
+                <DeviceTag key={i} device={d} />
+              ))}
+            </div>
+          )}
+          {track.clips?.length > 0 && (
+            <div className="track-clips">
+              {track.clips.map((clip, i) => (
+                <span key={i} className="track-clip-block" style={{ background: color, borderColor: 'rgba(0,0,0,0.25)' }}>
+                  <span className="track-clip-name" style={{ color: textColor }}>{clip}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="track-label-block" style={{ background: color }}>
+          <span className="track-label-name" style={{ color: textColor }}>{track.name}</span>
+          <span className="track-label-type" style={{ color: subTextColor }}>{typeLabel}</span>
+        </div>
       </div>
-      {track.devices?.length > 0 && (
-        <div className="track-devices">
-          {track.devices.map((d, i) => (
-            <DeviceTag key={i} device={d} />
-          ))}
-        </div>
-      )}
-      {track.clips?.length > 0 && (
-        <div className="track-clips">
-          {track.clips.map((clip, i) => (
-            <span key={i} className="clip-tag">{clip}</span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
