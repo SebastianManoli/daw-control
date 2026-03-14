@@ -1,6 +1,88 @@
 import { useProject } from '../../context/ProjectContext';
 import { abletonColor, textOnColor } from '../../utils/abletonColors';
 
+function normalizePluginName(name) {
+  return (name || '').trim().toLowerCase();
+}
+
+function inferPluginRole(trackTypes) {
+  if (!trackTypes || trackTypes.size === 0) return 'Unknown';
+  const hasMidi = trackTypes.has('MidiTrack');
+  const hasAudioish = trackTypes.has('AudioTrack') || trackTypes.has('ReturnTrack') || trackTypes.has('MasterTrack');
+
+  if (hasMidi && !hasAudioish) return 'Instrument';
+  if (!hasMidi && hasAudioish) return 'Effect';
+  if (hasMidi && hasAudioish) return 'Instrument/Effect';
+  return 'Unknown';
+}
+
+function buildPluginMeta(parsedData) {
+  const pluginMeta = new Map();
+
+  const allTrackGroups = [
+    ...(parsedData?.tracks?.midi_tracks || []),
+    ...(parsedData?.tracks?.audio_tracks || []),
+    ...(parsedData?.tracks?.return_tracks || []),
+  ];
+
+  for (const track of allTrackGroups) {
+    for (const device of track.devices || []) {
+      const key = normalizePluginName(device.name);
+      if (!key) continue;
+
+      if (!pluginMeta.has(key)) {
+        pluginMeta.set(key, {
+          tracks: new Set(),
+          trackTypes: new Set(),
+          formats: new Set(),
+        });
+      }
+
+      const meta = pluginMeta.get(key);
+      meta.tracks.add(track.name || 'Untitled');
+      meta.trackTypes.add(track.type || 'UnknownTrack');
+      if (device.type) meta.formats.add(String(device.type).toUpperCase());
+    }
+  }
+
+  for (const device of parsedData?.tracks?.master?.devices || []) {
+    const key = normalizePluginName(device.name);
+    if (!key) continue;
+
+    if (!pluginMeta.has(key)) {
+      pluginMeta.set(key, {
+        tracks: new Set(),
+        trackTypes: new Set(),
+        formats: new Set(),
+      });
+    }
+
+    const meta = pluginMeta.get(key);
+    meta.tracks.add('Master');
+    meta.trackTypes.add('MasterTrack');
+    if (device.type) meta.formats.add(String(device.type).toUpperCase());
+  }
+
+  return pluginMeta;
+}
+
+function buildPluginTooltip(vst, pluginMeta) {
+  const key = normalizePluginName(vst?.name);
+  const meta = pluginMeta.get(key);
+
+  const tracks = meta?.tracks ? [...meta.tracks].sort().join(', ') : 'Unknown';
+  const fallbackFormat = meta?.formats && meta.formats.size > 0 ? [...meta.formats][0] : null;
+  const format = vst?.format || fallbackFormat || 'Unknown';
+  const role = inferPluginRole(meta?.trackTypes);
+
+  return [
+    `Plugin: ${vst?.name || 'Unknown'}`,
+    `Track: ${tracks}`,
+    `Format: ${format}`,
+    `Type: ${role}`,
+  ].join('\n');
+}
+
 function DeviceTag({ device }) {
   const typeClass = device.type === 'native' ? 'device-native' : 'device-plugin';
   return (
@@ -78,6 +160,7 @@ export function CommitDetails() {
     : [];
 
   const masterDevices = parsedData?.tracks?.master?.devices || [];
+  const pluginMeta = buildPluginMeta(parsedData);
 
   return (
     <div className="commit-details">
@@ -121,7 +204,11 @@ export function CommitDetails() {
                 </div>
               )}
               <div className="revert-button">
-                <button onClick={() => restoreVersion(selectedCommit)} disabled={isLoading}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => restoreVersion(selectedCommit)}
+                  disabled={isLoading}
+                >
                   Revert
                 </button>
               </div>
@@ -156,10 +243,13 @@ export function CommitDetails() {
                 </div>
                 <div className="plugin-list">
                   {parsedData.third_party_vsts.map((vst, i) => (
-                    <div key={i} className="plugin-row">
-                      <span className="plugin-name">{vst.name}</span>
-                      <span className="plugin-format">{vst.format}</span>
-                    </div>
+                    <span
+                      key={i}
+                      className="plugin-chip"
+                      title={buildPluginTooltip(vst, pluginMeta)}
+                    >
+                      {vst.name}
+                    </span>
                   ))}
                 </div>
               </div>
