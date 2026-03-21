@@ -882,9 +882,26 @@ body {
 
 .track-clips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
   padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4f55 transparent;
+}
+
+.track-clips::-webkit-scrollbar {
+  height: 4px;
+}
+
+.track-clips::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.track-clips::-webkit-scrollbar-thumb {
+  background: #4a4f55;
+  border-radius: 2px;
 }
 
 .track-clip-block {
