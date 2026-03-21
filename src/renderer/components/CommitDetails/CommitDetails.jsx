@@ -84,6 +84,40 @@ function buildPluginTooltip(vst, pluginMeta) {
   ].join('\n');
 }
 
+function MidiClipPreview({ notes, length }) {
+  if (!notes || notes.length === 0 || !length) return null;
+
+  const W = 100;
+  const H = 28;
+  const pitches = notes.map((n) => n.pitch);
+  const minPitch = Math.min(...pitches) - 1;
+  const maxPitch = Math.max(...pitches) + 1;
+  const pitchRange = maxPitch - minPitch;
+
+  return (
+    <svg
+      className="midi-clip-preview"
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+    >
+      {notes.map((note, i) => {
+        const x = (note.time / length) * W;
+        const w = Math.max((note.duration / length) * W, 0.8);
+        const y = ((maxPitch - note.pitch) / pitchRange) * H;
+        const h = Math.max(H / pitchRange, 1.5);
+        return (
+          <rect
+            key={i}
+            x={x} y={y} width={w} height={h}
+            fill={`rgba(0,0,0,${0.4 + (note.velocity / 127) * 0.45})`}
+            rx="0.5"
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 function DeviceTag({ device }) {
   const typeClass = device.type === 'native' ? 'device-native' : 'device-plugin';
   const isActive = device.active !== false;
@@ -112,20 +146,19 @@ function TrackRow({ track, trackNumber }) {
     <div className="track-row">
       <div className="track-row-main">
         <div className="track-row-content">
-          {track.devices?.length > 0 && (
-            <div className="track-devices">
-              {track.devices.map((d, i) => (
-                <DeviceTag key={i} device={d} />
-              ))}
-            </div>
-          )}
           {track.clips?.length > 0 && (
             <div className="track-clips">
-              {track.clips.map((clip, i) => (
-                <span key={i} className="track-clip-block" style={{ background: color, borderColor: 'rgba(0,0,0,0.25)' }}>
-                  <span className="track-clip-name" style={{ color: textColor }}>{clip}</span>
-                </span>
-              ))}
+              {track.clips.map((clip, i) => {
+                const clipColor = abletonColor(clip.color ?? track.color);
+                const clipTextStyle = textOnColor(clipColor);
+                const clipTextColor = clipTextStyle === 'dark' ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.88)';
+                return (
+                  <span key={i} className="track-clip-block" style={{ background: clipColor, borderColor: 'rgba(0,0,0,0.25)' }}>
+                    <span className="track-clip-name" style={{ color: clipTextColor }}>{clip.name ?? clip}</span>
+                    <MidiClipPreview notes={clip.notes} length={clip.length} />
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>
@@ -138,6 +171,13 @@ function TrackRow({ track, trackNumber }) {
           {track.controls && (
             <div className="track-controls-panel">
               <TrackControls track={track} trackNumber={trackNumber} />
+              {track.devices?.length > 0 && (
+                <div className="track-devices">
+                  {track.devices.map((d, i) => (
+                    <DeviceTag key={i} device={d} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

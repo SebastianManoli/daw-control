@@ -243,25 +243,81 @@ def get_device_name(device_element):
 
 def get_clip_names(track_element):
     """
-    Extract names of all clips (Session and Arrangement) in the track.
-    Returns a list of clip names (including duplicates) for count-based diffing.
+    Extract clips (Session and Arrangement) from the track.
+    Returns a list of {name, color} dicts.
     """
     clip_names = []
 
     def _extract_name(node, index):
-        # Try UserName first
-        user = node.find(".//Name/UserName")
+        # Direct Value attribute on Name element (Live 12+)
+        name_elem = node.find('./Name')
+        if name_elem is not None and name_elem.get('Value'):
+            return name_elem.get('Value')
+        # UserName child (older format)
+        user = node.find('.//Name/UserName')
         if user is not None and user.get('Value'):
             return user.get('Value')
-        # Then EffectiveName
-        eff = node.find(".//Name/EffectiveName")
+        # EffectiveName child (older format)
+        eff = node.find('.//Name/EffectiveName')
         if eff is not None and eff.get('Value'):
             return eff.get('Value')
-        # Fall back to a positional label so unnamed clips are still tracked
+        # Fall back to positional label
         return f"Clip {index + 1}"
 
+    def _extract_color(node):
+        color_elem = node.find('./Color')
+        if color_elem is not None and color_elem.get('Value') is not None:
+            return int(color_elem.get('Value'))
+        return None
+
+    def _extract_length(node):
+        # Use loop length (LoopEnd - LoopStart) — this is the unique musical content,
+        # independent of how many times it repeats in the arrangement.
+        loop_end = node.find('./Loop/LoopEnd')
+        loop_start = node.find('./Loop/LoopStart')
+        if loop_end is not None and loop_start is not None:
+            length = _to_float(loop_end.get('Value'), default=0.0) - _to_float(loop_start.get('Value'), default=0.0)
+            if length > 0:
+                return length
+        # Fallback to clip boundaries
+        end = node.find('./CurrentEnd')
+        start = node.find('./CurrentStart')
+        if end is not None:
+            return _to_float(end.get('Value'), default=0.0) - _to_float(start.get('Value') if start is not None else None, default=0.0)
+        return 0.0
+
+    def _extract_midi_notes(clip_node, clip_length):
+        loop_start_elem = clip_node.find('./Loop/LoopStart')
+        loop_start = _to_float(loop_start_elem.get('Value'), default=0.0) if loop_start_elem is not None else 0.0
+        loop_end = loop_start + clip_length
+
+        notes = []
+        for key_track in clip_node.findall('.//KeyTrack'):
+            midi_key = key_track.find('./MidiKey')
+            if midi_key is None:
+                continue
+            pitch = int(midi_key.get('Value', 0))
+            for note in key_track.findall('./Notes/MidiNoteEvent'):
+                time = _to_float(note.get('Time'), default=0.0)
+                if time < loop_start or time >= loop_end:
+                    continue
+                notes.append({
+                    'pitch': pitch,
+                    'time': time - loop_start,
+                    'duration': _to_float(note.get('Duration'), default=0.25),
+                    'velocity': int(note.get('Velocity', 100)),
+                })
+        return notes
+
     for i, clip in enumerate(track_element.findall(".//MidiClip") + track_element.findall(".//AudioClip")):
-        clip_names.append(_extract_name(clip, i))
+        is_midi = clip.tag == 'MidiClip'
+        clip_length = _extract_length(clip)
+        clip_names.append({
+            'name': _extract_name(clip, i),
+            'color': _extract_color(clip),
+            'length': clip_length,
+            'notes': _extract_midi_notes(clip, clip_length) if is_midi else [],
+        })
 
     return clip_names
 

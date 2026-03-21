@@ -151,8 +151,8 @@ function buildAlsDiff(beforeData, afterData) {
     devicesDiff.added.forEach((name) => addTrackChange(key, label, { detail: `Device added: ${name}` }));
     devicesDiff.removed.forEach((name) => addTrackChange(key, label, { detail: `Device removed: ${name}` }));
 
-    const beforeClips = toArray(beforeTrack?.clips);
-    const afterClips = toArray(afterTrack?.clips);
+    const beforeClips = toArray(beforeTrack?.clips).map((c) => (typeof c === 'object' ? c.name : c));
+    const afterClips = toArray(afterTrack?.clips).map((c) => (typeof c === 'object' ? c.name : c));
     const clipsDiff = diffValueLists(beforeClips, afterClips);
 
     clipsDiff.added.forEach((clipName) => addTrackChange(key, label, { detail: `Clip added: ${clipName}` }));
