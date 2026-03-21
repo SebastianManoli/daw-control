@@ -3,9 +3,104 @@ import json
 import sys
 from xml.etree import ElementTree as ET
 from pathlib import Path
+import math
 
 from collections import Counter
 from typing import Dict, Optional
+
+
+def _parse_bool(value: Optional[str], default: bool = False) -> bool:
+    if value is None:
+        return default
+    return str(value).strip().lower() in {'true', '1', 'yes', 'on'}
+
+
+def _to_float(value: Optional[str], default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _linear_gain_to_db(gain: float) -> float:
+    # Ableton stores mixer gain as linear amplitude.
+    # Convert to dB for UI display: dB = 20 * log10(gain)
+    if gain <= 0.0:
+        return float('-inf')
+    return 20.0 * math.log10(gain)
+
+
+def _find_mixer_element(track_element, relative_path: str):
+    # Prefer the track mixer path; fall back to legacy direct lookup.
+    # NOTE: must use `is not None` — XML elements with no children are falsy,
+    # so `or` would incorrectly skip a found-but-empty element (e.g. <Manual Value="false"/>).
+    result = track_element.find(f".//Mixer/{relative_path}")
+    if result is not None:
+        return result
+    result = track_element.find(f".//DeviceChain/Mixer/{relative_path}")
+    if result is not None:
+        return result
+    return track_element.find(f".//{relative_path}")
+
+
+def _find_mixer_elements(track_element, relative_path: str):
+    """Return candidate matches in priority order for robust parameter reads."""
+    selectors = [
+        f".//Mixer/{relative_path}",
+        f".//DeviceChain/Mixer/{relative_path}",
+        f"./{relative_path}",
+        f".//{relative_path}",
+    ]
+
+    seen = set()
+    results = []
+
+    for selector in selectors:
+        for elem in track_element.findall(selector):
+            elem_id = id(elem)
+            if elem_id in seen:
+                continue
+            seen.add(elem_id)
+            results.append(elem)
+
+    return results
+
+
+def _extract_bool_from_element(elem):
+    if elem is None:
+        return None
+
+    for attr in ('Value', 'value', 'On', 'Enabled'):
+        attr_value = elem.get(attr)
+        if attr_value is not None:
+            return _parse_bool(attr_value)
+
+    manual = elem.find('./Manual')
+    if manual is not None and manual.get('Value') is not None:
+        return _parse_bool(manual.get('Value'))
+
+    return None
+
+
+def _extract_bool_from_paths(track_element, relative_paths, default: bool = False) -> bool:
+    """
+    Extract a boolean from a list of possible ALS paths.
+    Handles both direct attributes (Value) and nested Manual Value forms.
+    """
+    bool_values = []
+
+    for relative_path in relative_paths:
+        for elem in _find_mixer_elements(track_element, relative_path):
+            parsed_value = _extract_bool_from_element(elem)
+            if parsed_value is not None:
+                bool_values.append(parsed_value)
+
+    if not bool_values:
+        return default
+
+    # If any candidate says true, treat as active.
+    # This avoids false negatives when multiple bool nodes exist.
+    return any(bool_values)
 
 
 def open_als_xml(path: Path) -> ET.ElementTree:
@@ -168,6 +263,101 @@ def get_clip_names(track_element):
 
     return clip_names
 
+def extract_track_volume(track_element):
+    """Extract the volume value from a track (in dB)."""
+    volume_elem = _find_mixer_element(track_element, "Volume/Manual")
+    gain_linear = _to_float(volume_elem.get('Value') if volume_elem is not None else None, default=1.0)
+    db = _linear_gain_to_db(gain_linear)
+
+    # Clamp to Ableton-like display floor used by UI.
+    if db == float('-inf'):
+        return -145.0
+    return db
+
+def extract_track_pan(track_element):
+    """Extract the pan value from a track (Ableton UI-like -50 to 50)."""
+    pan_elem = _find_mixer_element(track_element, "Pan/Manual")
+    pan_raw = _to_float(pan_elem.get('Value') if pan_elem is not None else None, default=0.0)
+
+    # Ableton pan is commonly stored as -1..1. The UI shows roughly -50..50 (L/R).
+    if -1.0 <= pan_raw <= 1.0:
+        return pan_raw * 50.0
+    return pan_raw
+
+def extract_track_solo(track_element):
+    """Extract solo state from a track."""
+    return _extract_bool_from_paths(
+        track_element,
+        [
+            'SoloSink',
+            'SoloSink/Manual',
+            'Solo',
+            'Solo/Manual',
+            'TrackSolo',
+            'TrackSolo/Manual',
+        ],
+        default=False,
+    )
+
+def extract_track_muted(track_element):
+    """Extract muted/disabled state from a track."""
+    # Ableton stores the mute (speaker) state in Speaker/Manual
+    speaker_manual = _find_mixer_element(track_element, "Speaker/Manual")
+    if speaker_manual is not None:
+        return not _parse_bool(speaker_manual.get('Value'), default=True)
+
+    # Fallback: On/Manual (track activator, older format)
+    on_manual = _find_mixer_element(track_element, "On/Manual")
+    if on_manual is not None:
+        return not _parse_bool(on_manual.get('Value'), default=True)
+
+    return False
+
+def extract_track_armed(track_element):
+    """Extract recording armed state from a track."""
+    return _extract_bool_from_paths(
+        track_element,
+        [
+            'Recorder/IsArmed',
+            'IsArmed',
+            'ArmedForRecording',
+            'ArmedForRecording/Manual',
+            'Arm',
+            'Arm/Manual',
+            'RecordArm',
+            'RecordArm/Manual',
+            'ExplicitArm',
+            'ExplicitArm/Manual',
+            'ImplicitArm',
+            'ImplicitArm/Manual',
+        ],
+        default=False,
+    )
+
+def extract_track_sends(track_element):
+    """Extract send levels to return tracks."""
+    sends = {
+        'sendA': 0.0,
+        'sendB': 0.0,
+        'sendC': 0.0,
+        'sendD': 0.0
+    }
+    
+    # Look for Sends container
+    sends_container = _find_mixer_element(track_element, "Sends")
+    if sends_container is not None:
+        send_list = sends_container.findall(".//Send")
+        for idx, send_elem in enumerate(send_list[:4]):  # Max 4 sends
+            send_key = f'send{chr(65 + idx)}'  # sendA, sendB, sendC, sendD
+            volume_elem = send_elem.find(".//Volume/Manual")
+            if volume_elem is not None and volume_elem.get('Value'):
+                try:
+                    sends[send_key] = _linear_gain_to_db(float(volume_elem.get('Value')))
+                except (ValueError, TypeError):
+                    sends[send_key] = 0.0
+    
+    return sends
+
 def extract_master_track_info(tree: ET.ElementTree):
     # Check for MainTrack (Live 12+) or MasterTrack (older versions)
     master_track = tree.find(".//MainTrack")
@@ -185,11 +375,27 @@ def extract_master_track_info(tree: ET.ElementTree):
     devices_container = master_track.find(".//Devices")
     if devices_container is not None:
         for device in devices_container:
-                    devices.append(get_device_info(device))
+            devices.append(get_device_info(device))
+    
+    # Extract master track controls
+    volume = extract_track_volume(master_track)
+    pan = extract_track_pan(master_track)
+    solo = extract_track_solo(master_track)
+    muted = extract_track_muted(master_track)
+    armed = extract_track_armed(master_track)
+    sends = extract_track_sends(master_track)
             
     return {
         'type': 'Master',
-        'devices': devices
+        'devices': devices,
+        'controls': {
+            'volume': volume,
+            'pan': pan,
+            'solo': solo,
+            'muted': muted,
+            'armed': armed,
+            'sends': sends
+        }
     }
 
 def extract_track_info(tree: ET.ElementTree):
@@ -219,6 +425,14 @@ def extract_track_info(tree: ET.ElementTree):
 
             # Extract Clips
             clips = get_clip_names(track)
+            
+            # Extract track controls
+            volume = extract_track_volume(track)
+            pan = extract_track_pan(track)
+            solo = extract_track_solo(track)
+            muted = extract_track_muted(track)
+            armed = extract_track_armed(track)
+            sends = extract_track_sends(track)
 
             track_data = {
                 'id': track.get('Id'),
@@ -226,7 +440,15 @@ def extract_track_info(tree: ET.ElementTree):
                 'type': track_type.split('/')[-1],  # Get track type name
                 'color': track.find(".//Color").get('Value') if track.find(".//Color") is not None else None,
                 'devices': devices,
-                'clips': clips
+                'clips': clips,
+                'controls': {
+                    'volume': volume,
+                    'pan': pan,
+                    'solo': solo,
+                    'muted': muted,
+                    'armed': armed,
+                    'sends': sends
+                }
             }
 
             tracks.append(track_data)

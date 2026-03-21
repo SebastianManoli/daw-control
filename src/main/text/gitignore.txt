@@ -1,3 +1,5 @@
 Backup/*
 *.ini
 Ableton Project Info/*
+Samples/Processed/*
+Samples/Recorded/*

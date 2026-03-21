@@ -1,5 +1,6 @@
 import { useProject } from '../../context/ProjectContext';
 import { abletonColor, textOnColor } from '../../utils/abletonColors';
+import { TrackControls } from '../TrackControls';
 
 function normalizePluginName(name) {
   return (name || '').trim().toLowerCase();
@@ -98,7 +99,7 @@ const TRACK_TYPE_LABEL = {
   ReturnTrack: 'Return',
 };
 
-function TrackRow({ track }) {
+function TrackRow({ track, trackNumber }) {
   const typeLabel = TRACK_TYPE_LABEL[track.type] ?? 'Track';
   const color = abletonColor(track.color);
   const textStyle = textOnColor(color);
@@ -127,9 +128,16 @@ function TrackRow({ track }) {
           )}
         </div>
 
-        <div className="track-label-block" style={{ background: color }}>
-          <span className="track-label-name" style={{ color: textColor }}>{track.name}</span>
-          <span className="track-label-type" style={{ color: subTextColor }}>{typeLabel}</span>
+        <div className="track-side-panel">
+          <div className="track-label-block" style={{ background: color }}>
+            <span className="track-label-name" style={{ color: textColor }}>{track.name}</span>
+            <span className="track-label-type" style={{ color: subTextColor }}>{typeLabel}</span>
+          </div>
+          {track.controls && (
+            <div className="track-controls-panel">
+              <TrackControls track={track} trackNumber={trackNumber} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -231,7 +239,7 @@ export function CommitDetails() {
               </div>
               <div className="track-list">
                 {allTracks.map((track, i) => (
-                  <TrackRow key={i} track={track} />
+                  <TrackRow key={i} track={track} trackNumber={i + 1} />
                 ))}
               </div>
             </div>
