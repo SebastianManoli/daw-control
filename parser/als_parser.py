@@ -231,9 +231,11 @@ def get_device_info(device_element):
         name = au.get('Value')
         dev_type = "au"
         
-    # Heuristic for instrument vs effect could go here, but relying on format for now
-    # or simple XML tag checks if needed.
-    return {'name': name, 'type': dev_type}
+    # Device active state (On/Manual = false means bypassed)
+    on_manual = device_element.find('./On/Manual')
+    active = _parse_bool(on_manual.get('Value'), default=True) if on_manual is not None else True
+
+    return {'name': name, 'type': dev_type, 'active': active}
 
 def get_device_name(device_element):
     return get_device_info(device_element)['name']

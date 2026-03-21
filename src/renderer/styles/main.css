@@ -827,6 +827,23 @@ body {
   color: #d4d7db;
 }
 
+.device-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.device-status-active {
+  background: #f3ad58;
+}
+
+.device-status-inactive {
+  background: #555860;
+}
+
 .track-clips {
   display: flex;
   flex-wrap: wrap;

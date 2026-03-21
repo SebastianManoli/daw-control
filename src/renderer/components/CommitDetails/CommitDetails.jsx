@@ -86,8 +86,10 @@ function buildPluginTooltip(vst, pluginMeta) {
 
 function DeviceTag({ device }) {
   const typeClass = device.type === 'native' ? 'device-native' : 'device-plugin';
+  const isActive = device.active !== false;
   return (
-    <span className={`device-tag ${typeClass}`}>
+    <span className={`device-tag ${typeClass}`} title={isActive ? device.name : `${device.name} (bypassed)`}>
+      <span className={`device-status-dot ${isActive ? 'device-status-active' : 'device-status-inactive'}`} />
       {device.name}
     </span>
   );
