@@ -1,5 +1,6 @@
 import { useProject } from '../../context/ProjectContext';
 import { abletonColor, textOnColor } from '../../utils/abletonColors';
+import { DeviceTag } from '../DeviceTag';
 import { TrackControls } from '../TrackControls';
 
 function normalizePluginName(name) {
@@ -115,17 +116,6 @@ function MidiClipPreview({ notes, length }) {
         );
       })}
     </svg>
-  );
-}
-
-function DeviceTag({ device }) {
-  const typeClass = device.type === 'native' ? 'device-native' : 'device-plugin';
-  const isActive = device.active !== false;
-  return (
-    <span className={`device-tag ${typeClass}`} title={isActive ? device.name : `${device.name} (bypassed)`}>
-      <span className={`device-status-dot ${isActive ? 'device-status-active' : 'device-status-inactive'}`} />
-      {device.name}
-    </span>
   );
 }
 

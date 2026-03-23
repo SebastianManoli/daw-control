@@ -527,7 +527,6 @@ body {
 
 .revert-button {
   margin-left: auto;
-  display: flex;
   align-items: center;
 }
 
@@ -1071,6 +1070,145 @@ body {
 .diff-subitem-detail {
   font-size: 0.67rem;
   color: var(--abl-text-dim);
+}
+
+.diff-item-visual,
+.diff-subitem-visual {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.diff-subitem-visual--clip-list {
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.diff-subitem-visual--device-list {
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.diff-item-visual {
+  margin-top: 4px;
+}
+
+.diff-item-visual--track {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diff-subitem-action {
+  font-size: 0.66rem;
+  color: var(--abl-text-dim);
+  font-weight: 600;
+}
+
+.diff-track-chip {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 6px 8px;
+  border-radius: var(--base-border-radius);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.diff-track-chip-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.diff-track-chip-type {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.diff-clip-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  min-height: 18px;
+  padding: 1px 6px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: var(--base-border-radius);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-clip-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4f55 transparent;
+}
+
+.diff-device-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4f55 transparent;
+}
+
+.diff-clip-list::-webkit-scrollbar {
+  height: 4px;
+}
+
+.diff-clip-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diff-clip-list::-webkit-scrollbar-thumb {
+  background: #4a4f55;
+  border-radius: 2px;
+}
+
+.diff-device-list::-webkit-scrollbar {
+  height: 4px;
+}
+
+.diff-device-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diff-device-list::-webkit-scrollbar-thumb {
+  background: #4a4f55;
+  border-radius: 2px;
+}
+
+.diff-color-chip {
+  display: inline-block;
+  width: 20px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
 }
 
 .diff-item-values {
