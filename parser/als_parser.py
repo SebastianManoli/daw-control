@@ -305,7 +305,7 @@ def get_clip_names(track_element):
                     'pitch': pitch,
                     'time': time - loop_start,
                     'duration': _to_float(note.get('Duration'), default=0.25),
-                    'velocity': int(note.get('Velocity', 100)),
+                    'velocity': int(float(note.get('Velocity', 100))),
                 })
         return notes
 
