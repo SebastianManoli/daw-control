@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Parsing
   parseCommit: (commitHash) => ipcRenderer.invoke('parse-commit', commitHash),
+  parseWorkingFile: () => ipcRenderer.invoke('parse-working-file'),
 
   // Window controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),

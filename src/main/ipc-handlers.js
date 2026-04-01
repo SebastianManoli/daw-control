@@ -351,6 +351,32 @@ function registerIpcHandlers() {
     return restoreResult;
   });
 
+  // Handle parsing current working ALS file (live project state)
+  ipcMain.handle('parse-working-file', async () => {
+    if (!currentProjectPath) {
+      return { success: false, error: 'No project opened' };
+    }
+
+    try {
+      const alsResult = await findAlsFile(currentProjectPath);
+      if (!alsResult.success) {
+        return { success: false, error: alsResult.error };
+      }
+
+      const absolutePath = path.join(currentProjectPath, alsResult.alsPath);
+      const parseResult = await parseAlsFile(absolutePath);
+
+      if (!parseResult.success) {
+        return { success: false, error: parseResult.error };
+      }
+
+      return { success: true, data: parseResult.data };
+    } catch (error) {
+      console.error('Error parsing working file:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Handle parsing ALS file from a specific commit
   ipcMain.handle('parse-commit', async (event, commitHash) => {
     if (!currentProjectPath) {

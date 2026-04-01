@@ -16,6 +16,8 @@ export function ProjectProvider({ children }) {
   const [workingFileDiff, setWorkingFileDiff] = useState(null);
   const [workingFileDiffLoading, setWorkingFileDiffLoading] = useState(false);
   const [workingFileDiffError, setWorkingFileDiffError] = useState(null);
+  const [workingParsedData, setWorkingParsedData] = useState(null);
+  const [workingParsedDataLoading, setWorkingParsedDataLoading] = useState(false);
 
   const electron = useElectron();
   const isProjectOpen = !!projectPath;
@@ -46,6 +48,16 @@ export function ProjectProvider({ children }) {
 
     setWorkingFileDiffLoading(false);
     return result;
+  }, [electron, isProjectOpen]);
+
+  const loadWorkingParsedData = useCallback(async () => {
+    if (!isProjectOpen) return;
+    setWorkingParsedDataLoading(true);
+    const result = await electron.parseWorkingFile();
+    if (result.success) {
+      setWorkingParsedData(result.data);
+    }
+    setWorkingParsedDataLoading(false);
   }, [electron, isProjectOpen]);
 
   const syncSelectedChangedFile = useCallback(async (files) => {
@@ -87,13 +99,14 @@ export function ProjectProvider({ children }) {
       if (data.success) {
         setChangedFiles(data.files);
         await syncSelectedChangedFile(data.files);
+        await loadWorkingParsedData();
       }
     });
 
     return () => {
       electron.offChangedFilesUpdated();
     };
-  }, [electron, syncSelectedChangedFile]);
+  }, [electron, syncSelectedChangedFile, loadWorkingParsedData]);
 
   const openProject = useCallback(async () => {
     try {
@@ -121,6 +134,12 @@ export function ProjectProvider({ children }) {
         const changedResult = await electron.getChangedFiles();
         if (changedResult?.success) {
           setChangedFiles(changedResult.files);
+        }
+
+        // Parse current working ALS file for live project view
+        const workingParseResult = await electron.parseWorkingFile();
+        if (workingParseResult?.success) {
+          setWorkingParsedData(workingParseResult.data);
         }
 
         setIsLoading(false);
@@ -194,6 +213,8 @@ export function ProjectProvider({ children }) {
     workingFileDiff,
     workingFileDiffLoading,
     workingFileDiffError,
+    workingParsedData,
+    workingParsedDataLoading,
 
     // Actions
     openProject,

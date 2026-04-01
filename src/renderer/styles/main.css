@@ -487,6 +487,8 @@ body {
   border: 1px solid #1d1f22;
   color: var(--abl-text-main);
   transition: border-color 0.12s, background 0.12s;
+  border-radius: var(--base-border-radius);
+
 }
 
 .commit-summary-input:focus {
@@ -509,12 +511,14 @@ body {
   resize: vertical;
   min-height: 56px;
   transition: border-color 0.12s, background 0.12s;
+  border-radius: var(--base-border-radius);
 }
 
 .commit-description-input:focus {
   outline: none;
   background: #40444a;
   border-color: var(--abl-accent);
+  border-radius: var(--base-border-radius);
 }
 
 .commit-description-input::placeholder {
@@ -546,6 +550,7 @@ body {
 .commit-list-item:focus-visible {
   outline: 1px solid var(--abl-accent);
   outline-offset: -1px;
+  border-radius: var(--base-border-radius);
 }
 
 /* ============================================
@@ -556,6 +561,56 @@ body {
   flex-direction: column;
   min-height: 0;
   background: var(--abl-bg-main);
+}
+
+/* ============================================
+   Right Panel Toggle (Diff / Project)
+   ============================================ */
+.right-panel-toggle {
+  display: flex;
+  border-bottom: 1px solid var(--abl-border);
+  background: var(--abl-bg-panel);
+  flex-shrink: 0;
+}
+
+.right-panel-toggle button {
+  flex: 1;
+  padding: 9px 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--abl-text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-bottom-color 0.15s;
+}
+
+.right-panel-toggle button:hover {
+  color: var(--abl-text-dim);
+}
+
+.right-panel-toggle button.active {
+  color: var(--abl-text-main);
+  border-bottom-color: var(--abl-accent);
+}
+
+/* ============================================
+   Working Project Details (right panel - Changes tab)
+   ============================================ */
+.working-project-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.working-project-details .commit-details-diff {
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* ============================================

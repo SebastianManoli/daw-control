@@ -6,6 +6,7 @@ import { HistoryList } from '../HistoryList';
 import { CommitMessageForm } from '../CommitMessageForm';
 import { DiffViewer } from '../DiffViewer';
 import { CommitDetails } from '../CommitDetails';
+import { WorkingProjectDetails } from '../WorkingProjectDetails/WorkingProjectDetails';
 
 const MIN_LEFT_WIDTH = 250;
 const MAX_LEFT_WIDTH = 600;
@@ -13,6 +14,7 @@ const DEFAULT_LEFT_WIDTH = 350;
 
 export function RepositoryView() {
   const [activeTab, setActiveTab] = useState('history');
+  const [rightView, setRightView] = useState('diff');
   const [leftWidth, setLeftWidth] = useState(DEFAULT_LEFT_WIDTH);
   const isDragging = useRef(false);
   const { projectName, isProjectOpen, openProject } = useProject();
@@ -69,7 +71,27 @@ export function RepositoryView() {
       <div className="panel-divider" onMouseDown={handleMouseDown} />
 
       <div className="right-panel">
-        {activeTab === 'changes' ? <DiffViewer /> : <CommitDetails />}
+        {activeTab === 'changes' ? (
+          <>
+            <div className="right-panel-toggle">
+              <button
+                className={rightView === 'diff' ? 'active' : ''}
+                onClick={() => setRightView('diff')}
+              >
+                Diff
+              </button>
+              <button
+                className={rightView === 'project' ? 'active' : ''}
+                onClick={() => setRightView('project')}
+              >
+                Project
+              </button>
+            </div>
+            {rightView === 'diff' ? <DiffViewer /> : <WorkingProjectDetails />}
+          </>
+        ) : (
+          <CommitDetails />
+        )}
       </div>
     </div>
   );

@@ -1,180 +1,5 @@
 import { useProject } from '../../context/ProjectContext';
-import { abletonColor, textOnColor } from '../../utils/abletonColors';
-import { DeviceTag } from '../DeviceTag';
-import { TrackControls } from '../TrackControls';
-
-function normalizePluginName(name) {
-  return (name || '').trim().toLowerCase();
-}
-
-function inferPluginRole(trackTypes) {
-  if (!trackTypes || trackTypes.size === 0) return 'Unknown';
-  const hasMidi = trackTypes.has('MidiTrack');
-  const hasAudioish = trackTypes.has('AudioTrack') || trackTypes.has('ReturnTrack') || trackTypes.has('MasterTrack');
-
-  if (hasMidi && !hasAudioish) return 'Instrument';
-  if (!hasMidi && hasAudioish) return 'Effect';
-  if (hasMidi && hasAudioish) return 'Instrument/Effect';
-  return 'Unknown';
-}
-
-function buildPluginMeta(parsedData) {
-  const pluginMeta = new Map();
-
-  const allTrackGroups = [
-    ...(parsedData?.tracks?.midi_tracks || []),
-    ...(parsedData?.tracks?.audio_tracks || []),
-    ...(parsedData?.tracks?.return_tracks || []),
-  ];
-
-  for (const track of allTrackGroups) {
-    for (const device of track.devices || []) {
-      const key = normalizePluginName(device.name);
-      if (!key) continue;
-
-      if (!pluginMeta.has(key)) {
-        pluginMeta.set(key, {
-          tracks: new Set(),
-          trackTypes: new Set(),
-          formats: new Set(),
-        });
-      }
-
-      const meta = pluginMeta.get(key);
-      meta.tracks.add(track.name || 'Untitled');
-      meta.trackTypes.add(track.type || 'UnknownTrack');
-      if (device.type) meta.formats.add(String(device.type).toUpperCase());
-    }
-  }
-
-  for (const device of parsedData?.tracks?.master?.devices || []) {
-    const key = normalizePluginName(device.name);
-    if (!key) continue;
-
-    if (!pluginMeta.has(key)) {
-      pluginMeta.set(key, {
-        tracks: new Set(),
-        trackTypes: new Set(),
-        formats: new Set(),
-      });
-    }
-
-    const meta = pluginMeta.get(key);
-    meta.tracks.add('Master');
-    meta.trackTypes.add('MasterTrack');
-    if (device.type) meta.formats.add(String(device.type).toUpperCase());
-  }
-
-  return pluginMeta;
-}
-
-function buildPluginTooltip(vst, pluginMeta) {
-  const key = normalizePluginName(vst?.name);
-  const meta = pluginMeta.get(key);
-
-  const tracks = meta?.tracks ? [...meta.tracks].sort().join(', ') : 'Unknown';
-  const fallbackFormat = meta?.formats && meta.formats.size > 0 ? [...meta.formats][0] : null;
-  const format = vst?.format || fallbackFormat || 'Unknown';
-  const role = inferPluginRole(meta?.trackTypes);
-
-  return [
-    `Plugin: ${vst?.name || 'Unknown'}`,
-    `Track: ${tracks}`,
-    `Format: ${format}`,
-    `Type: ${role}`,
-  ].join('\n');
-}
-
-function MidiClipPreview({ notes, length }) {
-  if (!notes || notes.length === 0 || !length) return null;
-
-  const W = 100;
-  const H = 28;
-  const pitches = notes.map((n) => n.pitch);
-  const minPitch = Math.min(...pitches) - 1;
-  const maxPitch = Math.max(...pitches) + 1;
-  const pitchRange = maxPitch - minPitch;
-
-  return (
-    <svg
-      className="midi-clip-preview"
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-    >
-      {notes.map((note, i) => {
-        const x = (note.time / length) * W;
-        const w = Math.max((note.duration / length) * W, 0.8);
-        const y = ((maxPitch - note.pitch) / pitchRange) * H;
-        const h = Math.max(H / pitchRange, 1.5);
-        return (
-          <rect
-            key={i}
-            x={x} y={y} width={w} height={h}
-            fill={`rgba(0,0,0,${0.4 + (note.velocity / 127) * 0.45})`}
-            rx="0.5"
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-const TRACK_TYPE_LABEL = {
-  MidiTrack: 'MIDI',
-  AudioTrack: 'Audio',
-  ReturnTrack: 'Return',
-};
-
-function TrackRow({ track, trackNumber }) {
-  const typeLabel = TRACK_TYPE_LABEL[track.type] ?? 'Track';
-  const color = abletonColor(track.color);
-  const textStyle = textOnColor(color);
-  const textColor = textStyle === 'dark' ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.88)';
-  const subTextColor = textStyle === 'dark' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)';
-
-  return (
-    <div className="track-row">
-      <div className="track-row-main">
-        <div className="track-row-content">
-          {track.clips?.length > 0 && (
-            <div className="track-clips">
-              {track.clips.map((clip, i) => {
-                const clipColor = abletonColor(clip.color ?? track.color);
-                const clipTextStyle = textOnColor(clipColor);
-                const clipTextColor = clipTextStyle === 'dark' ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.88)';
-                return (
-                  <span key={i} className="track-clip-block" style={{ background: clipColor, borderColor: 'rgba(0,0,0,0.25)' }}>
-                    <span className="track-clip-name" style={{ color: clipTextColor }}>{clip.name ?? clip}</span>
-                    <MidiClipPreview notes={clip.notes} length={clip.length} />
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="track-side-panel">
-          <div className="track-label-block" style={{ background: color }}>
-            <span className="track-label-name" style={{ color: textColor }}>{track.name}</span>
-            <span className="track-label-type" style={{ color: subTextColor }}>{typeLabel}</span>
-          </div>
-          {track.controls && (
-            <div className="track-controls-panel">
-              <TrackControls track={track} trackNumber={trackNumber} />
-              {track.devices?.length > 0 && (
-                <div className="track-devices">
-                  {track.devices.map((d, i) => (
-                    <DeviceTag key={i} device={d} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { ProjectSnapshot } from '../ProjectSnapshot/ProjectSnapshot';
 
 export function CommitDetails() {
   const { selectedCommit, commits, parsedData, isLoading, restoreVersion } = useProject();
@@ -191,17 +16,6 @@ export function CommitDetails() {
     );
   }
 
-  const allTracks = parsedData
-    ? [
-        ...(parsedData.tracks?.midi_tracks || []),
-        ...(parsedData.tracks?.audio_tracks || []),
-        ...(parsedData.tracks?.return_tracks || []),
-      ].filter((t) => t.clips?.length > 0)
-    : [];
-
-  const masterDevices = parsedData?.tracks?.master?.devices || [];
-  const pluginMeta = buildPluginMeta(parsedData);
-
   return (
     <div className="commit-details">
       <div className="commit-details-header">
@@ -216,86 +30,17 @@ export function CommitDetails() {
       </div>
 
       <div className="commit-details-diff">
-        {isLoading ? (
-          <div className="parsed-loading">Parsing project data...</div>
-        ) : !parsedData ? (
-          <div className="diff-placeholder">
-            <p>No parsed data available for this commit</p>
+        <ProjectSnapshot parsedData={parsedData} isLoading={isLoading} revertButton={
+          <div className="revert-button">
+            <button
+              className="btn btn-secondary"
+              onClick={() => restoreVersion(selectedCommit)}
+              disabled={isLoading}
+            >
+              Revert
+            </button>
           </div>
-        ) : (
-          <div className="parsed-data">
-            <div className="parsed-section parsed-overview">
-              <div className="parsed-overview-item">
-                <span className="parsed-overview-label">Project</span>
-                <span className="parsed-overview-value">{parsedData.project_name}</span>
-              </div>
-              <div className="parsed-overview-item">
-                <span className="parsed-overview-label">Tempo</span>
-                <span className="parsed-overview-value">{parsedData.tempo} BPM</span>
-              </div>
-              <div className="parsed-overview-item">
-                <span className="parsed-overview-label">Tracks</span>
-                <span className="parsed-overview-value">{allTracks.length}</span>
-              </div>
-              {parsedData.third_party_vsts?.length > 0 && (
-                <div className="parsed-overview-item">
-                  <span className="parsed-overview-label">Plugins</span>
-                  <span className="parsed-overview-value">{parsedData.third_party_vsts.length}</span>
-                </div>
-              )}
-              <div className="revert-button">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => restoreVersion(selectedCommit)}
-                  disabled={isLoading}
-                >
-                  Revert
-                </button>
-              </div>
-            </div>
-
-            {masterDevices.length > 0 && (
-              <div className="parsed-section">
-                <div className="parsed-section-title">Master</div>
-                <div className="track-devices">
-                  {masterDevices.map((d, i) => (
-                    <DeviceTag key={i} device={d} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="parsed-section">
-              <div className="parsed-section-title">
-                Tracks ({allTracks.length})
-              </div>
-              <div className="track-list">
-                {allTracks.map((track, i) => (
-                  <TrackRow key={i} track={track} trackNumber={i + 1} />
-                ))}
-              </div>
-            </div>
-
-            {parsedData.third_party_vsts?.length > 0 && (
-              <div className="parsed-section">
-                <div className="parsed-section-title">
-                  Third-Party Plugins ({parsedData.third_party_vsts.length})
-                </div>
-                <div className="plugin-list">
-                  {parsedData.third_party_vsts.map((vst, i) => (
-                    <span
-                      key={i}
-                      className="plugin-chip"
-                      title={buildPluginTooltip(vst, pluginMeta)}
-                    >
-                      {vst.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        } />
       </div>
     </div>
   );
