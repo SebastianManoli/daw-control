@@ -142,3 +142,10 @@ vite.config.ts.timestamp-*
 
 # Windows reserved names
 nul
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.coverage
+.pytest_cache/
